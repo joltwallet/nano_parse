@@ -379,8 +379,8 @@ int process_block(nl_block_t *block){
                          "\\\"work\\\":\\\"%llx\\\","
                          "\\\"signature\\\":\\\"%s\\\""
                          "}",
-                         //            account_address, previous_hex, representative_address, balance_buf, link_hex, block->work, signature_hex
-                         "0", "0", "0", balance_buf, "0", block->work, signature_hex
+                                     account_address, previous_hex, representative_address, balance_buf, link_hex, block->work, signature_hex
+                         //"0", "0", "0", balance_buf, "0", block->work, signature_hex
                          );
     
     printf("\nBlock: %d\n%s\n", error, new_block);
