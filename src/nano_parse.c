@@ -187,6 +187,44 @@ int get_work(nl_block_t *block){
     
 }
 
+int get_frontier(char *account_address, char *frontier_block_hash){
+    
+    int outcome;
+    
+    strlower(account_address);
+    
+    unsigned char rpc_command[512];
+    unsigned char rx_string[1024];
+    
+    snprintf( (char *) rpc_command, 512,
+            "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
+            account_address);
+    
+    network_get_data(rpc_command, rx_string);
+    
+    const cJSON *frontiers = NULL;
+    const cJSON *account = NULL;
+    
+    cJSON *json = cJSON_Parse(rx_string);
+    
+    frontiers = cJSON_GetObjectItemCaseSensitive(json, "frontiers");
+    
+    account = cJSON_GetObjectItemCaseSensitive(frontiers, account_address);
+    
+    if (cJSON_IsString(account) && (account->valuestring != NULL))
+    {
+        strcpy(frontier_block_hash, account->valuestring);
+        outcome = 1;
+    }
+    else{
+        outcome = 0;
+    }
+    
+    cJSON_Delete(json);
+    
+    return outcome;
+}
+
 int get_head(nl_block_t *block){
     
     char account_address[ADDRESS_BUF_LEN];
@@ -203,8 +241,8 @@ int get_head(nl_block_t *block){
     //First get frontier
     char frontier_block_hash[65];
     
-    //get_frontier(account_address, frontier_block_hash);
-    strcpy(frontier_block_hash, "54E3CDEEDF790136FF8FD47105D1008F46BA42A1EC7790A1B43E1AC381EDFA80");
+    get_frontier(account_address, frontier_block_hash);
+    //strcpy(frontier_block_hash, "54E3CDEEDF790136FF8FD47105D1008F46BA42A1EC7790A1B43E1AC381EDFA80");
     printf("Frontier Block: %s\n", frontier_block_hash);
     
     //Now get the block info
@@ -370,6 +408,9 @@ int process_block(nl_block_t *block){
     unsigned char new_block[1024];
     int error = snprintf( new_block,1024,
                          "{"
+                         "\"action\":\"process\","
+                         "\"block\":\""
+                         "{"
                          "\\\"type\\\":\\\"state\\\","
                          "\\\"account\\\":\\\"%s\\\","
                          "\\\"previous\\\":\\\"%s\\\","
@@ -378,24 +419,16 @@ int process_block(nl_block_t *block){
                          "\\\"link\\\":\\\"%s\\\","
                          "\\\"work\\\":\\\"%llx\\\","
                          "\\\"signature\\\":\\\"%s\\\""
-                         "}",
+                         "}"
+                         "\"}",
                                      account_address, previous_hex, representative_address, balance_buf, link_hex, block->work, signature_hex
-                         //"0", "0", "0", balance_buf, "0", block->work, signature_hex
                          );
     
     printf("\nBlock: %d\n%s\n", error, new_block);
     
-    unsigned char rpc_command[1024];
     unsigned char rx_string[1024];
     
-    snprintf( (char *) rpc_command, 1024,
-             "{"
-             "\"action\":\"process\","
-             "\"block\":\"%s\""
-             "}",
-             new_block);
-    
-    network_get_data(rpc_command, rx_string);
+    network_get_data(new_block, rx_string);
     
     printf("%s\n", rx_string);
     
