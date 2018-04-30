@@ -10,7 +10,7 @@
 #include "cJSON.h"
 #include <sodium.h>
 #include <libwebsockets.h>
-#include "../components/nano_lws/include/websocket_cl.h"
+#include "../components/nano_lws/include/nano_lws.h"
 #include "../include/nano_parse.h"
 
 void nl_block_init(nl_block_t *block){

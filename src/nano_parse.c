@@ -4,9 +4,16 @@
 #include <sodium.h>
 #include "cJSON.h"
 
+#ifdef ESP32
+#include "nano_lib.h"
 #include "nano_parse.h"
 #include "nano_lws.h"
-#include "nano_lib.h"
+#else
+#include "../components/nano_lib/include/nano_lib.h"
+#include "../include/nano_parse.h"
+#include "../components/nano_lws/include/nano_lws.h"
+#endif
+
 #include "helpers.h"
 
 char* deblank(char* input)

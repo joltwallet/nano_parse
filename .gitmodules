@@ -1,3 +1,6 @@
 [submodule "components/nano_lws"]
 	path = components/nano_lws
 	url = https://github.com/NanoRay/nano_lws.git
+[submodule "components/nano_lib"]
+	path = components/nano_lib
+	url = git@github.com:NanoRay/nano_lib.git

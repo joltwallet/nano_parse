@@ -2,6 +2,7 @@
 #define __NANO_LIB_H__
 
 #include "mbedtls/bignum.h"
+#include <stdbool.h>
 
 /* Structs (and Struct Prototypes)*/
 typedef struct{} block_t;
@@ -41,6 +42,8 @@ typedef enum nl_err_t{
 #define BLOCK_BUF_LEN 512 // todo: optimize this number
 #define MNEMONIC_BUF_LEN (24 * 10 + 1)
 #define PASSPHRASE_BUF_LEN 256
+
+#define CONFIG_NANO_LIB_ADDRESS_PREFIX "xrb_"
 
 /* Useful Extra values */
 #define BURN_ADDRESS "xrb_1111111111111111111111111111111111111111111111111111hifc8npp"
