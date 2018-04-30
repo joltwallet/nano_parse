@@ -47,6 +47,12 @@ int main()
     
     
     while (1) {
+        
+        char result_char[250];
+        
+        int result = get_pending("xrb_3quyraqknnp9is57sdtxokpbpfsn11f4r7uiwd7gq444nq1nhjp4h5s835wf", result_char);
+        
+        printf("Outcome pending: %d, %s\n", result, result_char);
         int actual_count = get_block_count();
         
         printf("%d\n", actual_count);

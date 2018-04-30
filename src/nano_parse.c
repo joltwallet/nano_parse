@@ -141,6 +141,45 @@ int get_frontier(char *account_address, char *frontier_block_hash){
     return outcome;
 }
 
+int get_pending(char *account_address, char *pending_block){
+    
+    int outcome;
+    
+    strlower(account_address);
+    
+    unsigned char rpc_command[512];
+    unsigned char rx_string[1024];
+    
+    snprintf( (char *) rpc_command, 512,
+             "{\"action\":\"accounts_pending\",\"count\": 1,\"accounts\":[\"%s\"]}",
+             account_address);
+    
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    
+    const cJSON *blocks = NULL;
+    const cJSON *account = NULL;
+    
+    cJSON *json = cJSON_Parse((char *)rx_string);
+    
+    blocks = cJSON_GetObjectItemCaseSensitive(json, "blocks");
+    
+    account = cJSON_GetObjectItemCaseSensitive(blocks, account_address);
+    
+    if (cJSON_IsArray(account))
+    {
+        cJSON *pending = cJSON_GetArrayItem(account, 0);
+        strcpy(pending_block, pending->valuestring);
+        outcome = 1;
+    }
+    else{
+        outcome = 0;
+    }
+    
+    cJSON_Delete(json);
+    
+    return outcome;
+}
+
 int get_head(nl_block_t *block){
     
     char account_address[ADDRESS_BUF_LEN];
