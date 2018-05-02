@@ -141,6 +141,146 @@ int get_frontier(char *account_address, char *frontier_block_hash){
     return outcome;
 }
 
+int get_block(char *block_hash, nl_block_t *block){
+    
+    int outcome;
+    
+    unsigned char rpc_command[512];
+    unsigned char rx_string[1024];
+    
+    snprintf( (char *) rpc_command, 512,
+             "{\"action\":\"block\",\"hash\":\"%s\"}",
+             block_hash);
+    
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    
+    const cJSON *json_contents = NULL;
+    const cJSON *json_type = NULL;
+    const cJSON *json_previous = NULL;
+    const cJSON *json_link = NULL;
+    const cJSON *json_representative = NULL;
+    const cJSON *json_account = NULL;
+    const cJSON *json_balance = NULL;
+    const cJSON *json_work = NULL;
+    const cJSON *json_signature = NULL;
+    
+    cJSON *json = cJSON_Parse((char *)rx_string);
+    
+    json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
+    char *string = cJSON_Print(json_contents);
+    
+    printf("Blocks: %s\n", string);
+
+    
+    char* new_string = replace(string, "\\n", "\\");
+    
+    for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
+        *p = ' ';
+    }
+    
+    char * new_string_nws = deblank(new_string);
+    
+    new_string_nws[0] = ' ';
+    new_string_nws[strlen(new_string_nws)-1] = ' ';
+    
+    cJSON *nested_json = cJSON_Parse(new_string_nws);
+    
+    json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
+    if (cJSON_IsString(json_type) && (json_type->valuestring != NULL))
+    {
+        printf("Type: %s\n", json_type->valuestring);
+        if (strcmp(json_type->valuestring, "state") == 0){
+            
+            block->type = STATE;
+        }
+        else if (strcmp(json_type->valuestring, "send") == 0){
+            block->type = SEND;
+        }
+        else if (strcmp(json_type->valuestring, "receive") == 0){
+            block->type = RECEIVE;
+        }
+        else if (strcmp(json_type->valuestring, "open") == 0){
+            block->type = OPEN;
+        }
+        else if (strcmp(json_type->valuestring, "change") == 0){
+            block->type = CHANGE;
+        }
+        
+        printf("block.type: %d\n", block->type);
+    }
+    
+    json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
+    if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
+    {
+        printf("Account: %s\n", json_account->valuestring);
+        //TODO We need to convert this to a public key
+        sodium_hex2bin(block->account, sizeof(block->account),
+                       json_account->valuestring,
+                       HEX_256, NULL, NULL, NULL);
+    }
+    
+    json_previous = cJSON_GetObjectItemCaseSensitive(nested_json, "previous");
+    if (cJSON_IsString(json_previous) && (json_previous->valuestring != NULL))
+    {
+        
+        sodium_hex2bin(block->previous, sizeof(block->previous),
+                       json_previous->valuestring,
+                       HEX_256, NULL, NULL, NULL);
+    }
+    
+    json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
+    if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
+    {
+        printf("Representative: %s\n", json_representative->valuestring);
+        //TODO We need to convert this to a public key
+        sodium_hex2bin(block->representative, sizeof(block->representative),
+                       json_representative->valuestring,
+                       HEX_256, NULL, NULL, NULL);
+    }
+    
+    json_signature = cJSON_GetObjectItemCaseSensitive(nested_json, "signature");
+    if (cJSON_IsString(json_signature) && (json_signature->valuestring != NULL))
+    {
+        sodium_hex2bin(block->signature, sizeof(block->signature),
+                       json_signature->valuestring,
+                       HEX_512, NULL, NULL, NULL);
+    }
+    
+    json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "link");
+    if (cJSON_IsString(json_link) && (json_link->valuestring != NULL))
+    {
+        sodium_hex2bin(block->link, sizeof(block->link),
+                       json_link->valuestring,
+                       HEX_256, NULL, NULL, NULL);
+    }
+    
+    json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
+    if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
+    {
+        block->work = json_work->valuestring;
+    }
+    
+    json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
+    if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
+    {
+        printf("Balance: %s\n", json_balance->valuestring);
+        mbedtls_mpi current_balance;
+        printf("1\n");
+        mbedtls_mpi_init(&current_balance);
+        printf("2\n");
+        mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
+        printf("3\n");
+        mbedtls_mpi_copy( &(block->balance), &current_balance);
+        printf("4\n");
+        mbedtls_mpi_free (&current_balance);
+        printf("5\n");
+        
+    }
+    cJSON_Delete(json);
+    
+    return 0;
+}
+
 int get_pending(char *account_address, char *pending_block){
     
     int outcome;
@@ -196,9 +336,13 @@ int get_head(nl_block_t *block){
     //First get frontier
     char frontier_block_hash[65];
     
-    get_frontier(account_address, frontier_block_hash);
+    int frontier_outcome = get_frontier(account_address, frontier_block_hash);
     //strcpy(frontier_block_hash, "54E3CDEEDF790136FF8FD47105D1008F46BA42A1EC7790A1B43E1AC381EDFA80");
     printf("Frontier Block: %s\n", frontier_block_hash);
+    
+    if (frontier_outcome == 0){
+        return 1;
+    }
     
     //Now get the block info
     unsigned char rpc_command[1024];

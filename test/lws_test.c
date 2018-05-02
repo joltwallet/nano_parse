@@ -23,9 +23,45 @@ void nl_block_init(nl_block_t *block){
     sodium_memzero(block->link, sizeof(block->link));
     mbedtls_mpi_init(&(block->balance));
 }
-/*
 
-*/
+void print_block(nl_block_t *block){
+    printf("Block->type: %d\n", block->type);
+    
+    hex256_t account_hex;
+    sodium_bin2hex(account_hex, sizeof(account_hex),
+                   block->account, sizeof(block->account));
+    printf("Block->account: %s\n", account_hex);
+    
+    hex256_t previous_hex;
+    sodium_bin2hex(previous_hex, sizeof(previous_hex),
+                   block->previous, sizeof(block->previous));
+    printf("Block->previous: %s\n", previous_hex);
+    
+    hex256_t representative_hex;
+    sodium_bin2hex(representative_hex, sizeof(representative_hex),
+                   block->representative, sizeof(block->representative));
+    printf("Block->representative: %s\n", representative_hex);
+    
+    hex512_t signature_hex;
+    sodium_bin2hex(signature_hex, sizeof(signature_hex),
+                   block->signature, sizeof(block->signature));
+    printf("Block->signature: %s\n", signature_hex);
+    
+    hex256_t link_hex;
+    sodium_bin2hex(link_hex, sizeof(link_hex),
+                   block->link, sizeof(block->link));
+    printf("Block->link: %s\n", link_hex);
+    
+    printf("Block->work: %llx\n", block->work);
+    
+    static char buf[64];
+    size_t n;
+    memset(buf, 0, sizeof(buf));
+    mbedtls_mpi_write_string(&block->balance, 10, buf, sizeof(buf)-1, &n);
+    
+    printf("Block->balance: %s\n", buf);
+}
+
 int main()
 {
     // printf() displays the string inside quotation
@@ -52,55 +88,31 @@ int main()
         
         int result = get_pending("xrb_3quyraqknnp9is57sdtxokpbpfsn11f4r7uiwd7gq444nq1nhjp4h5s835wf", result_char);
         
-        printf("Outcome pending: %d, %s\n", result, result_char);
-        int actual_count = get_block_count();
+        //printf("Outcome pending: %d, %s\n", result, result_char);
+        //int actual_count = get_block_count();
         
-        printf("%d\n", actual_count);
+        //printf("%d\n", actual_count);
         
-        int outcome = get_head(&block);
-        printf("Block returned\n");
+        //Get pending block and then produce open block
+        nl_block_t new_block;
         
-        printf("Block->type: %d\n", block.type);
-        
-        hex256_t account_hex;
-        sodium_bin2hex(account_hex, sizeof(account_hex),
-                       block.account, sizeof(block.account));
-        printf("Block->account: %s\n", account_hex);
-        
-        hex256_t previous_hex;
-        sodium_bin2hex(previous_hex, sizeof(previous_hex),
-                       block.previous, sizeof(block.previous));
-        printf("Block->previous: %s\n", previous_hex);
-        
-        hex256_t representative_hex;
-        sodium_bin2hex(representative_hex, sizeof(representative_hex),
-                       block.representative, sizeof(block.representative));
-        printf("Block->representative: %s\n", representative_hex);
+        nl_block_init(&new_block);
+        int outcome = get_block("6A1DE2DCF00F3D63904597EEA0AA6898F38A585BB849454B639224491F25D351", &new_block);
 
-        hex512_t signature_hex;
-        sodium_bin2hex(signature_hex, sizeof(signature_hex),
-                       block.signature, sizeof(block.signature));
-        printf("Block->signature: %s\n", signature_hex);
+        printf("Block returned\n");
+        print_block(&new_block);
         
-        hex256_t link_hex;
-        sodium_bin2hex(link_hex, sizeof(link_hex),
-                       block.link, sizeof(block.link));
-        printf("Block->link: %s\n", link_hex);
+        //Now add account (hex of private key)
+        sodium_hex2bin(block.account, sizeof(block.account),
+                       "C1CD33D62CC72FAC1294C990D4DD2B02A4DB85D42F220C48C13AF288FB21D4C1",
+                       HEX_256, NULL, NULL, NULL);
+
         
-        printf("Block->work: %llx\n", block.work);
-        
-        printf("Generating new work\n");
-        int work_outcome = get_work(&block);
+        //int outcome = get_head(&block);
+        //printf("Generating new work\n");
+        //int work_outcome = get_work(&block);
         
         printf("Block->work: %llx\n", block.work);
-        
-        static char buf[64];
-        size_t n;
-        memset(buf, 0, sizeof(buf));
-        printf("Print balance\n");
-        mbedtls_mpi_write_string(&block.balance, 10, buf, sizeof(buf)-1, &n);
-        
-        printf("Block->balance: %s\n", buf);
         
         //Now send your own block
         printf("\nPrinting new block\n");
