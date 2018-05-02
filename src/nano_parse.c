@@ -264,11 +264,18 @@ int get_block(char *block_hash, nl_block_t *block){
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
     {
         printf("Balance: %s\n", json_balance->valuestring);
+
+        
         mbedtls_mpi current_balance;
         printf("1\n");
         mbedtls_mpi_init(&current_balance);
         printf("2\n");
-        mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
+        if (block->type == SEND){
+            mbedtls_mpi_read_string(&current_balance, 16, json_balance->valuestring);
+        }
+        else {
+            mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
+        }
         printf("3\n");
         mbedtls_mpi_copy( &(block->balance), &current_balance);
         printf("4\n");

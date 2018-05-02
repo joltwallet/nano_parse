@@ -119,8 +119,7 @@ int main()
         process_block(&block);
         
         loop_count = 10;
-        
-        printf("Count = %d and %d and %d\n", loop_count, actual_count, outcome);
+
         sleep(loop_count);
         
     }
