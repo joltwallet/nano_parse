@@ -4,15 +4,15 @@
 #include <sodium.h>
 #include "cJSON.h"
 
-#ifdef ESP32
+//#ifdef ESP32
 #include "nano_lib.h"
 #include "nano_parse.h"
 #include "nano_lws.h"
-#else
-#include "../components/nano_lib/include/nano_lib.h"
-#include "../include/nano_parse.h"
-#include "../components/nano_lws/include/nano_lws.h"
-#endif
+//#else
+//#include "../components/nano_lib/include/nano_lib.h"
+//#include "../include/nano_parse.h"
+//#include "../components/nano_lws/include/nano_lws.h"
+//#endif
 
 #include "helpers.h"
 
@@ -70,18 +70,14 @@ int get_block_count(){
     return count_int;
 }
 
-int get_work(nl_block_t *block){
-    
-    //Previous (convert bin to hex)
-    hex512_t previous_hex;
-    sodium_bin2hex(previous_hex, sizeof(previous_hex),
-                   block->previous, sizeof(block->previous));
-    printf("Previous: %s\n", previous_hex);
+int get_work(char *hash, char *work){
     
     unsigned char rpc_command[512];
     unsigned char rx_string[1024];
     
-    snprintf( (char *) rpc_command, 512, "{\"action\":\"work_generate\",\"hash\":\"%s\"}", previous_hex );
+
+    snprintf( (char *) rpc_command, 512, "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
+    
     
     network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
     
@@ -91,7 +87,8 @@ int get_work(nl_block_t *block){
     json_work = cJSON_GetObjectItemCaseSensitive(json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
     {
-        block->work = strtoull(json_work->valuestring, NULL, 16);
+        //work = strtoull(json_work->valuestring, NULL, 16);
+        strcpy(work, json_work->valuestring);
     }
     else{
         printf("Error\n");
@@ -271,7 +268,12 @@ int get_block(char *block_hash, nl_block_t *block){
         mbedtls_mpi_init(&current_balance);
         printf("2\n");
         if (block->type == SEND){
+            printf("Found SEND\n");
             mbedtls_mpi_read_string(&current_balance, 16, json_balance->valuestring);
+            static char buf[64];
+            size_t n;
+            memset(buf, 0, sizeof(buf));
+            mbedtls_mpi_write_string(&current_balance, 10, buf, sizeof(buf)-1, &n);
         }
         else {
             mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
@@ -476,7 +478,7 @@ int process_block(nl_block_t *block){
     printf("Address: %s\n", account_address);
     
     //Previous (convert bin to hex)
-    hex512_t previous_hex;
+    hex256_t previous_hex;
     sodium_bin2hex(previous_hex, sizeof(previous_hex),
                    block->previous, sizeof(block->previous));
     printf("Previous: %s\n", previous_hex);
@@ -500,6 +502,7 @@ int process_block(nl_block_t *block){
     hex256_t link_hex;
     sodium_bin2hex(link_hex, sizeof(link_hex),
                    block->link, sizeof(block->link));
+    strupper(link_hex);
     printf("Link: %s\n", link_hex);
     
     //Work (keep as hex)
@@ -509,6 +512,7 @@ int process_block(nl_block_t *block){
     hex512_t signature_hex;
     sodium_bin2hex(signature_hex, sizeof(signature_hex),
                    block->signature, sizeof(block->signature));
+    strupper(signature_hex);
     printf("Block->signature: %s\n", signature_hex);
     
     unsigned char new_block[1024];
