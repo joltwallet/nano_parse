@@ -75,6 +75,7 @@ int get_work(char *hash, char *work){
     unsigned char rpc_command[512];
     unsigned char rx_string[1024];
     
+    strupper(hash);
 
     snprintf( (char *) rpc_command, 512, "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
     

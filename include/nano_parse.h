@@ -12,6 +12,7 @@ int get_work(char *hash, char *work);
 int get_head(nl_block_t *block);
 int get_block(char *block_hash, nl_block_t *block);
 int get_pending(char *account_address, char *pending_block);
+int get_frontier(char *account_address, char *frontier_block_hash);
 int process_block(nl_block_t *block);
 
 #endif
