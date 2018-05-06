@@ -8,6 +8,7 @@
 #include "nano_lib.h"
 #include "nano_parse.h"
 #include "nano_lws.h"
+#include "esp_log.h"
 //#else
 //#include "../components/nano_lib/include/nano_lib.h"
 //#include "../include/nano_parse.h"
@@ -15,6 +16,8 @@
 //#endif
 
 #include "helpers.h"
+
+static const char TAG[] = "nano_parse";
 
 char* deblank(char* input)
 {
@@ -70,7 +73,7 @@ int get_block_count(){
     return count_int;
 }
 
-int get_work(char *hash, char *work){
+nl_err_t get_work(hex256_t hash, uint64_t *work){
     
     unsigned char rpc_command[512];
     unsigned char rx_string[1024];
@@ -86,22 +89,19 @@ int get_work(char *hash, char *work){
     cJSON *json = cJSON_Parse((char *)rx_string);
     
     json_work = cJSON_GetObjectItemCaseSensitive(json, "work");
-    if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
-    {
-        //work = strtoull(json_work->valuestring, NULL, 16);
-        strcpy(work, json_work->valuestring);
+    if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
+        *work = nl_parse_server_work_string(json_work->valuestring);
     }
     else{
-        printf("Error\n");
+        ESP_LOGE(TAG, "Server didn't respond with valid WORK.");
+        return E_FAILURE;
     }
     
     cJSON_Delete(json);
-    
-    return 0;
-    
+    return E_SUCCESS;
 }
 
-int get_frontier(char *account_address, char *frontier_block_hash){
+nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
     
     int outcome;
     
@@ -128,10 +128,10 @@ int get_frontier(char *account_address, char *frontier_block_hash){
     if (cJSON_IsString(account) && (account->valuestring != NULL))
     {
         strcpy(frontier_block_hash, account->valuestring);
-        outcome = 1;
+        outcome = E_SUCCESS;
     }
     else{
-        outcome = 0;
+        outcome = E_FAILURE;
     }
     
     cJSON_Delete(json);
@@ -139,10 +139,8 @@ int get_frontier(char *account_address, char *frontier_block_hash){
     return outcome;
 }
 
-int get_block(char *block_hash, nl_block_t *block){
-    
-    int outcome;
-    
+nl_err_t get_block(char *block_hash, nl_block_t *block){
+
     unsigned char rpc_command[512];
     unsigned char rx_string[1024];
     
@@ -167,8 +165,7 @@ int get_block(char *block_hash, nl_block_t *block){
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
     char *string = cJSON_Print(json_contents);
     
-    printf("Blocks: %s\n", string);
-
+    ESP_LOGI(TAG, "get_block: %s", string);
     
     char* new_string = replace(string, "\\n", "\\");
     
@@ -186,9 +183,8 @@ int get_block(char *block_hash, nl_block_t *block){
     json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
     if (cJSON_IsString(json_type) && (json_type->valuestring != NULL))
     {
-        printf("Type: %s\n", json_type->valuestring);
+        ESP_LOGI(TAG, "get_block: Type: %s", json_type->valuestring);
         if (strcmp(json_type->valuestring, "state") == 0){
-            
             block->type = STATE;
         }
         else if (strcmp(json_type->valuestring, "send") == 0){
@@ -204,13 +200,13 @@ int get_block(char *block_hash, nl_block_t *block){
             block->type = CHANGE;
         }
         
-        printf("block.type: %d\n", block->type);
+        ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
     }
     
     json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
     {
-        printf("Account: %s\n", json_account->valuestring);
+        ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
         //TODO We need to convert this to a public key
         sodium_hex2bin(block->account, sizeof(block->account),
                        json_account->valuestring,
@@ -229,7 +225,7 @@ int get_block(char *block_hash, nl_block_t *block){
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
     {
-        printf("Representative: %s\n", json_representative->valuestring);
+        ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
         //TODO We need to convert this to a public key
         sodium_hex2bin(block->representative, sizeof(block->representative),
                        json_representative->valuestring,
@@ -255,21 +251,19 @@ int get_block(char *block_hash, nl_block_t *block){
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
     {
-        block->work = json_work->valuestring;
+        block->work = nl_parse_server_work_string(json_work->valuestring);
     }
     
     json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
     {
-        printf("Balance: %s\n", json_balance->valuestring);
+        ESP_LOGI(TAG, "get_block: Balance: %s\n", json_balance->valuestring);
 
         
         mbedtls_mpi current_balance;
-        printf("1\n");
         mbedtls_mpi_init(&current_balance);
-        printf("2\n");
         if (block->type == SEND){
-            printf("Found SEND\n");
+            ESP_LOGI(TAG, "Found SEND");
             mbedtls_mpi_read_string(&current_balance, 16, json_balance->valuestring);
             static char buf[64];
             size_t n;
@@ -279,21 +273,18 @@ int get_block(char *block_hash, nl_block_t *block){
         else {
             mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
         }
-        printf("3\n");
         mbedtls_mpi_copy( &(block->balance), &current_balance);
-        printf("4\n");
         mbedtls_mpi_free (&current_balance);
-        printf("5\n");
-        
     }
     cJSON_Delete(json);
     
-    return 0;
+    return E_SUCCESS;
 }
 
-int get_pending(char *account_address, char *pending_block){
+nl_err_t get_pending(char *account_address,
+        hex256_t pending_block_hash, mbedtls_mpi *amount){
     
-    int outcome;
+    nl_err_t outcome = E_SUCCESS;
     
     strlower(account_address);
     
@@ -301,7 +292,10 @@ int get_pending(char *account_address, char *pending_block){
     unsigned char rx_string[1024];
     
     snprintf( (char *) rpc_command, 512,
-             "{\"action\":\"accounts_pending\",\"count\": 1,\"accounts\":[\"%s\"]}",
+             "{\"action\":\"accounts_pending\","
+             "\"count\": 1,"
+             "\"source\": \"true\","
+             "\"accounts\":[\"%s\"]}",
              account_address);
     
     network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
@@ -312,17 +306,24 @@ int get_pending(char *account_address, char *pending_block){
     cJSON *json = cJSON_Parse((char *)rx_string);
     
     blocks = cJSON_GetObjectItemCaseSensitive(json, "blocks");
-    
     account = cJSON_GetObjectItemCaseSensitive(blocks, account_address);
-    
-    if (cJSON_IsArray(account))
-    {
-        cJSON *pending = cJSON_GetArrayItem(account, 0);
-        strcpy(pending_block, pending->valuestring);
-        outcome = 1;
-    }
-    else{
-        outcome = 0;
+
+    cJSON *current_element = NULL;
+    char *current_key = NULL;
+    cJSON_ArrayForEach(current_element, account) {
+        current_key = current_element->string;
+        if (current_key != NULL) {
+            strlcpy(pending_block_hash, current_key, HEX_256);
+            const cJSON *pending_contents = cJSON_GetObjectItemCaseSensitive(
+                    account, current_key);
+            const cJSON *amount_obj = cJSON_GetObjectItemCaseSensitive(
+                    pending_contents, "amount");
+            mbedtls_mpi_read_string(amount, 10, amount_obj->string);
+            outcome = E_SUCCESS;
+        }
+        else{
+            outcome = E_FAILURE;
+        }
     }
     
     cJSON_Delete(json);
@@ -340,7 +341,7 @@ int get_head(nl_block_t *block){
                                sizeof(account_address),
                                block->account);
     strupper(account_address);
-    printf("Address: %s\n", account_address);
+    ESP_LOGI(TAG, "get_head: Address: %s\n", account_address);
     
     //Get latest block from server
     //First get frontier
@@ -348,7 +349,7 @@ int get_head(nl_block_t *block){
     
     int frontier_outcome = get_frontier(account_address, frontier_block_hash);
     //strcpy(frontier_block_hash, "54E3CDEEDF790136FF8FD47105D1008F46BA42A1EC7790A1B43E1AC381EDFA80");
-    printf("Frontier Block: %s\n", frontier_block_hash);
+    ESP_LOGI(TAG, "get_head: Frontier Block: %s", frontier_block_hash);
     
     if (frontier_outcome == 0){
         return 1;
@@ -397,7 +398,7 @@ int get_head(nl_block_t *block){
     
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
     {
-        printf("Account: %s\n", json_account->valuestring);
+        ESP_LOGI(TAG, "get_head: Account: %s", json_account->valuestring);
         //TODO We need to convert this to a public key
         sodium_hex2bin(block->account, sizeof(block->account),
                        json_account->valuestring,
@@ -416,7 +417,7 @@ int get_head(nl_block_t *block){
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
     {
-        printf("Representative: %s\n", json_representative->valuestring);
+        ESP_LOGI(TAG, "get_head: Representative: %s", json_representative->valuestring);
         //TODO We need to convert this to a public key
         sodium_hex2bin(block->representative, sizeof(block->representative),
                        json_representative->valuestring,
@@ -442,23 +443,18 @@ int get_head(nl_block_t *block){
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
     {
-        block->work = json_work->valuestring;
+        block->work = nl_parse_server_work_string(json_work->valuestring);
     }
     
     json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
     {
-        printf("Balance: %s\n", json_balance->valuestring);
+        ESP_LOGI(TAG, "get_head: Balance: %s", json_balance->valuestring);
         mbedtls_mpi current_balance;
-        printf("1\n");
         mbedtls_mpi_init(&current_balance);
-        printf("2\n");
         mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
-        printf("3\n");
         mbedtls_mpi_copy( &(block->balance), &current_balance);
-        printf("4\n");
         mbedtls_mpi_free (&current_balance);
-        printf("5\n");
         
     }
     
@@ -476,13 +472,13 @@ int process_block(nl_block_t *block){
                                sizeof(account_address),
                                block->account);
     strlower(account_address);
-    printf("Address: %s\n", account_address);
+    ESP_LOGI(TAG, "process_block: Address: %s", account_address);
     
     //Previous (convert bin to hex)
     hex256_t previous_hex;
     sodium_bin2hex(previous_hex, sizeof(previous_hex),
                    block->previous, sizeof(block->previous));
-    printf("Previous: %s\n", previous_hex);
+    ESP_LOGI(TAG, "process_block: Previous: %s", previous_hex);
     
     //Representative (convert bin to address)
     char representative_address[ADDRESS_BUF_LEN];
@@ -490,33 +486,35 @@ int process_block(nl_block_t *block){
                                sizeof(representative_address),
                                block->representative);
     strlower(representative_address);
-    printf("Representative: %s\n", representative_address);
+    ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
     //Balance (convert mpi to string)
     char balance_buf[64];
     size_t n;
     memset(balance_buf, 0, sizeof(balance_buf));
     mbedtls_mpi_write_string(&(block->balance), 10, balance_buf, sizeof(balance_buf)-1, &n);
-    printf("Balance: %s\n", balance_buf);
+    ESP_LOGI(TAG, "process_block: Balance: %s", balance_buf);
     
     //Link (convert bin to hex)
     hex256_t link_hex;
     sodium_bin2hex(link_hex, sizeof(link_hex),
                    block->link, sizeof(block->link));
     strupper(link_hex);
-    printf("Link: %s\n", link_hex);
+    ESP_LOGI(TAG, "process_block: Link: %s", link_hex);
     
     //Work (keep as hex)
-    printf("Work: %llx\n", block->work);
+    ESP_LOGI(TAG, "process_block: Work: %llx", block->work);
     
     //Signature (convert bin to hex)
     hex512_t signature_hex;
     sodium_bin2hex(signature_hex, sizeof(signature_hex),
                    block->signature, sizeof(block->signature));
     strupper(signature_hex);
-    printf("Block->signature: %s\n", signature_hex);
+    ESP_LOGI(TAG, "Block->signature: %s", signature_hex);
     
     unsigned char new_block[1024];
+    hex64_t work;
+    nl_generate_server_work_string(work, block->work);
     int error = snprintf( (char *) new_block,1024,
                          "{"
                          "\"action\":\"process\","
@@ -528,21 +526,20 @@ int process_block(nl_block_t *block){
                          "\\\"representative\\\":\\\"%s\\\","
                          "\\\"balance\\\":\\\"%s\\\","
                          "\\\"link\\\":\\\"%s\\\","
-                         "\\\"work\\\":\\\"%llx\\\","
+                         "\\\"work\\\":\\\"%s\\\","
                          "\\\"signature\\\":\\\"%s\\\""
                          "}"
                          "\"}",
-                                     account_address, previous_hex, representative_address, balance_buf, link_hex, block->work, signature_hex
-                         );
+            account_address, previous_hex, representative_address, balance_buf,
+            link_hex, work, signature_hex);
     
-    printf("\nBlock: %d\n%s\n", error, new_block);
+    ESP_LOGI(TAG, "\nprocess_block: Block: %d\n%s\n", error, new_block);
     
     unsigned char rx_string[1024];
     
     network_get_data(new_block, rx_string);
     
-    printf("%s\n", rx_string);
-    
+    ESP_LOGI(TAG, "%s\n", rx_string);
     
     return 0;
 }
