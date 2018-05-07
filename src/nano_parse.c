@@ -284,7 +284,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
 nl_err_t get_pending(char *account_address,
         hex256_t pending_block_hash, mbedtls_mpi *amount){
     
-    nl_err_t outcome = E_SUCCESS;
+    nl_err_t outcome = E_FAILURE;
     
     strlower(account_address);
     
@@ -321,13 +321,9 @@ nl_err_t get_pending(char *account_address,
             mbedtls_mpi_read_string(amount, 10, amount_obj->valuestring);
             outcome = E_SUCCESS;
         }
-        else{
-            outcome = E_FAILURE;
-        }
     }
     
     cJSON_Delete(json);
-    
     return outcome;
 }
 
