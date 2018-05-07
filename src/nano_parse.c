@@ -318,7 +318,7 @@ nl_err_t get_pending(char *account_address,
                     account, current_key);
             const cJSON *amount_obj = cJSON_GetObjectItemCaseSensitive(
                     pending_contents, "amount");
-            mbedtls_mpi_read_string(amount, 10, amount_obj->string);
+            mbedtls_mpi_read_string(amount, 10, amount_obj->valuestring);
             outcome = E_SUCCESS;
         }
         else{
