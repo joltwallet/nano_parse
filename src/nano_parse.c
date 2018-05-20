@@ -17,6 +17,9 @@
 
 #include "helpers.h"
 
+#define NANOPARSE_CMD_BUF_LEN 1024
+#define NANOPARSE_RX_BUF_LEN 1024
+
 static const char TAG[] = "nano_parse";
 
 char* deblank(char* input)
@@ -50,11 +53,12 @@ char* replace(char* str, char* a, char* b)
 int get_block_count(){
     /* Works; returns the integer processed block count */
     int count_int;
-    char rpc_command[1024];
-    char rx_string[1024];
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
     
-    snprintf( (char *) rpc_command, 1024, "{\"action\":\"block_count\"}" );
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
+            "{\"action\":\"block_count\"}" );
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
     
     const cJSON *count = NULL;
     cJSON *json = cJSON_Parse((char *)rx_string);
@@ -74,16 +78,14 @@ int get_block_count(){
 }
 
 nl_err_t get_work(hex256_t hash, uint64_t *work){
-    
-    unsigned char rpc_command[512];
-    unsigned char rx_string[1024];
-    
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
+   
     strupper(hash);
 
-    snprintf( (char *) rpc_command, 512, "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
+    snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
     
-    
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
     
     const cJSON *json_work = NULL;
     cJSON *json = cJSON_Parse((char *)rx_string);
@@ -102,19 +104,16 @@ nl_err_t get_work(hex256_t hash, uint64_t *work){
 }
 
 nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
-    
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
     int outcome;
     
     strlower(account_address);
-    
-    unsigned char rpc_command[512];
-    unsigned char rx_string[1024];
-    
-    snprintf( (char *) rpc_command, 512,
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
             "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
             account_address);
     
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
     
     const cJSON *frontiers = NULL;
     const cJSON *account = NULL;
@@ -140,15 +139,14 @@ nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
 }
 
 nl_err_t get_block(char *block_hash, nl_block_t *block){
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
 
-    unsigned char rpc_command[512];
-    unsigned char rx_string[1024];
-    
-    snprintf( (char *) rpc_command, 512,
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
              "{\"action\":\"block\",\"hash\":\"%s\"}",
              block_hash);
     
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
     
     const cJSON *json_contents = NULL;
     const cJSON *json_type = NULL;
@@ -207,16 +205,12 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
     {
         ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
-        //TODO We need to convert this to a public key
-        sodium_hex2bin(block->account, sizeof(block->account),
-                       json_account->valuestring,
-                       HEX_256, NULL, NULL, NULL);
+        nl_address_to_public(block->account, json_account->valuestring);
     }
     
     json_previous = cJSON_GetObjectItemCaseSensitive(nested_json, "previous");
     if (cJSON_IsString(json_previous) && (json_previous->valuestring != NULL))
     {
-        
         sodium_hex2bin(block->previous, sizeof(block->previous),
                        json_previous->valuestring,
                        HEX_256, NULL, NULL, NULL);
@@ -226,10 +220,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
     {
         ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
-        //TODO We need to convert this to a public key
-        sodium_hex2bin(block->representative, sizeof(block->representative),
-                       json_representative->valuestring,
-                       HEX_256, NULL, NULL, NULL);
+        nl_address_to_public(block->representative, json_account->valuestring);
     }
     
     json_signature = cJSON_GetObjectItemCaseSensitive(nested_json, "signature");
@@ -258,7 +249,6 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
     {
         ESP_LOGI(TAG, "get_block: Balance: %s\n", json_balance->valuestring);
-
         
         mbedtls_mpi current_balance;
         mbedtls_mpi_init(&current_balance);
@@ -283,22 +273,21 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
 
 nl_err_t get_pending(char *account_address,
         hex256_t pending_block_hash, mbedtls_mpi *amount){
-    
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
+
     nl_err_t outcome = E_FAILURE;
     
     strlower(account_address);
     
-    unsigned char rpc_command[512];
-    unsigned char rx_string[1024];
-    
-    snprintf( (char *) rpc_command, 512,
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
              "{\"action\":\"accounts_pending\","
              "\"count\": 1,"
              "\"source\": \"true\","
              "\"accounts\":[\"%s\"]}",
              account_address);
     
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
     
     const cJSON *blocks = NULL;
     const cJSON *account = NULL;
@@ -328,7 +317,8 @@ nl_err_t get_pending(char *account_address,
 }
 
 int get_head(nl_block_t *block){
-    
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
     char account_address[ADDRESS_BUF_LEN];
     
     //Now convert this to an XRB address
@@ -351,14 +341,12 @@ int get_head(nl_block_t *block){
     }
     
     //Now get the block info
-    unsigned char rpc_command[1024];
-    unsigned char rx_string[1024];
-    
-    snprintf( (char *) rpc_command, 1024,
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
              "{\"action\":\"block\",\"hash\":\"%s\"}",
              frontier_block_hash);
     
-    network_get_data(rpc_command, rx_string);
+    network_get_data((unsigned char *) rpc_command, 
+            (unsigned char *) rx_string, sizeof(rx_string));
     
     block->type = STATE;
     
@@ -484,7 +472,7 @@ int process_block(nl_block_t *block){
     ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
     //Balance (convert mpi to string)
-    char balance_buf[64];
+    char balance_buf[66];
     size_t n;
     memset(balance_buf, 0, sizeof(balance_buf));
     mbedtls_mpi_write_string(&(block->balance), 10, balance_buf, sizeof(balance_buf)-1, &n);
@@ -507,10 +495,10 @@ int process_block(nl_block_t *block){
     strupper(signature_hex);
     ESP_LOGI(TAG, "Block->signature: %s", signature_hex);
     
-    unsigned char new_block[1024];
+    char new_block[NANOPARSE_CMD_BUF_LEN];
     hex64_t work;
     nl_generate_server_work_string(work, block->work);
-    int error = snprintf( (char *) new_block,1024,
+    int error = snprintf( (char *) new_block, sizeof(new_block),
                          "{"
                          "\"action\":\"process\","
                          "\"block\":\""
@@ -530,9 +518,9 @@ int process_block(nl_block_t *block){
     
     ESP_LOGI(TAG, "\nprocess_block: Block: %d\n%s\n", error, new_block);
     
-    unsigned char rx_string[1024];
+    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
     
-    network_get_data(new_block, rx_string);
+    network_get_data((unsigned char *)new_block, (unsigned char *)rx_string, sizeof(rx_string));
     
     ESP_LOGI(TAG, "%s\n", rx_string);
     
