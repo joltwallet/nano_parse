@@ -10,18 +10,34 @@
 
 static const *char TEST_TAG = "[nano_lws]"
 
+TEST_CASE("Block Count", TEST_TAG){
+    TEST_IGNORE()
+}
+
+TEST_CASE("Work", TEST_TAG){
+    TEST_IGNORE()
+}
+
+TEST_CASE("Head Block Hash", TEST_TAG){
+    TEST_IGNORE()
+}
+
 TEST_CASE("Parse Open Block", TEST_TAG){
     TEST_IGNORE()
 }
+
 TEST_CASE("Parse Send Block", TEST_TAG){
     TEST_IGNORE()
 }
+
 TEST_CASE("Parse Receive Block", TEST_TAG){
     TEST_IGNORE()
 }
+
 TEST_CASE("Parse Change Block", TEST_TAG){
     TEST_IGNORE()
 }
+
 TEST_CASE("Parse State Block", TEST_TAG){
     TEST_IGNORE()
 }
