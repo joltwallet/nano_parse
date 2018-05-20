@@ -83,6 +83,10 @@ static void wifi_setup(){
     }
 }
 
+TEST_CASE("WiFi Setup (debug util)", TEST_TAG){
+    wifi_setup();
+}
+
 TEST_CASE("WiFi Block Count", TEST_TAG){
     wifi_setup();
     uint32_t count = nanoparse_lws_block_count();
