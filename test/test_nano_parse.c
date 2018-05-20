@@ -15,8 +15,7 @@ static const char *TAG = "[nanoparse]";
 
 TEST_CASE("Block Count", TEST_TAG){
     uint32_t count;
-    const char *json_data =
-            "{\\n    \\\"count\\\": \\\"9493688\\\",\\n    \\\"unchecked\\\": \\\"18360\\\"\\n}\\n";
+    const char *json_data = "{\n    \"count\": \"9493688\",\n    \"unchecked\": \"18360\"\n}\n";
     count = nanoparse_block_count(json_data);
     TEST_ASSERT_EQUAL_INT(9493688, count);
 }
