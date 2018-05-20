@@ -231,14 +231,40 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
                        HEX_512, NULL, NULL, NULL);
     }
     
-    json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "link");
+    /**************
+     * Parse Link *
+     **************/
+    // For state: link is hexidecimal ("link")
+    // For open: link is hash of the pairing send block ("source")
+    // For change: link is nothing
+    // For send: link is destination pub key ("destination")
+    // For receive: link is hash of the pairing send block ("source")
     if (cJSON_IsString(json_link) && (json_link->valuestring != NULL))
     {
         sodium_hex2bin(block->link, sizeof(block->link),
                        json_link->valuestring,
                        HEX_256, NULL, NULL, NULL);
     }
-    
+
+    if ( block->type == STATE ){
+        json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "link");
+    }
+    else if(block->type == OPEN || block->type == RECEIVE){
+        json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "source");
+    }
+    if ( cJSON_IsString(json_link) && (json_link->valuestring != NULL) ){
+        sodium_hex2bin(block->link, sizeof(block->link),
+                       json_link->valuestring,
+                       HEX_256, NULL, NULL, NULL);
+    }
+    else if(block->type == SEND ){
+        json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "destination");
+        if ( cJSON_IsString(json_link) && (json_link->valuestring != NULL) ){
+            nl_address_to_public(block->link, json_link->valuestring);
+        }
+    }
+    // End Parse Link
+
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
     {
