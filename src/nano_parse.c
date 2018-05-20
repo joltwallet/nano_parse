@@ -127,7 +127,7 @@ nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
     
     if (cJSON_IsString(account) && (account->valuestring != NULL))
     {
-        strcpy(frontier_block_hash, account->valuestring);
+        strlcpy(frontier_block_hash, account->valuestring, HEX_256);
         outcome = E_SUCCESS;
     }
     else{
@@ -341,10 +341,9 @@ int get_head(nl_block_t *block){
     
     //Get latest block from server
     //First get frontier
-    char frontier_block_hash[65];
+    hex256_t frontier_block_hash;
     
     int frontier_outcome = get_frontier(account_address, frontier_block_hash);
-    //strcpy(frontier_block_hash, "54E3CDEEDF790136FF8FD47105D1008F46BA42A1EC7790A1B43E1AC381EDFA80");
     ESP_LOGI(TAG, "get_head: Frontier Block: %s", frontier_block_hash);
     
     if (frontier_outcome == 0){
