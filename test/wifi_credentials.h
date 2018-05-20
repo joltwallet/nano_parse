@@ -1,2 +1,2 @@
-#define WIFI_SSID ""
-#define WIFI_PASS "" 
+#define WIFI_SSID "The Internet"
+#define WIFI_PASS "CatBug:3" 

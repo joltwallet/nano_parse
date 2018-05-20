@@ -2,23 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
+#include "esp_log.h"
 #include "cJSON.h"
 
-//#ifdef ESP32
 #include "nano_lib.h"
 #include "nano_parse.h"
+
+#if CONFIG_NANOPARSE_BUILD_W_LWS
 #include "nano_lws.h"
-#include "esp_log.h"
-//#else
-//#include "../components/nano_lib/include/nano_lib.h"
-//#include "../include/nano_parse.h"
-//#include "../components/nano_lws/include/nano_lws.h"
-//#endif
-
-#include "helpers.h"
-
 #define NANOPARSE_CMD_BUF_LEN 1024
 #define NANOPARSE_RX_BUF_LEN 1024
+#endif
 
 static const char TAG[] = "nano_parse";
 
@@ -50,22 +44,15 @@ char* replace(char* str, char* a, char* b)
     return str;
 }
 
-int get_block_count(){
-    /* Works; returns the integer processed block count */
-    int count_int;
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
-    
-    snprintf( (char *) rpc_command, sizeof(rpc_command),
-            "{\"action\":\"block_count\"}" );
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
-    
+uint32_t nanoparse_block_count( const char *json_data ){
+    /* Parses rai_node rpc response for action "block count"
+     * Returns network block count */
+    uint32_t count_int;
     const cJSON *count = NULL;
-    cJSON *json = cJSON_Parse((char *)rx_string);
+    cJSON *json = cJSON_Parse(json_data);
     
     count = cJSON_GetObjectItemCaseSensitive(json, "count");
-    if (cJSON_IsString(count) && (count->valuestring != NULL))
-    {
+    if ( cJSON_IsString(count) && (count->valuestring != NULL) ){
         count_int = atoi(count->valuestring);
     }
     else{
@@ -73,10 +60,25 @@ int get_block_count(){
     }
     
     cJSON_Delete(json);
-    
     return count_int;
 }
 
+#if CONFIG_NANOPARSE_BUILD_W_LWS
+uint32_t nanoparse_lws_block_count(){
+    /* Uses nano_lws to get data from rai_node */
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
+    
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
+            "{\"action\":\"block_count\"}" );
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string,
+            sizeof(rx_string));
+
+    return nanoparse_block_count(rx_string);
+}
+#endif
+
+#if 0 
 nl_err_t get_work(hex256_t hash, uint64_t *work){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
@@ -570,3 +572,4 @@ int process_block(nl_block_t *block){
     
     return 0;
 }
+#endif
