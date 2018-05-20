@@ -159,14 +159,12 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     const cJSON *json_signature = NULL;
     
     cJSON *json = cJSON_Parse((char *)rx_string);
-    
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
     char *string = cJSON_Print(json_contents);
     
     ESP_LOGI(TAG, "get_block: %s", string);
     
     char* new_string = replace(string, "\\n", "\\");
-    
     for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
         *p = ' ';
     }
@@ -177,7 +175,10 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     new_string_nws[strlen(new_string_nws)-1] = ' ';
     
     cJSON *nested_json = cJSON_Parse(new_string_nws);
-    
+
+    /********************
+     * Parse Block Type *
+     ********************/
     json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
     if (cJSON_IsString(json_type) && (json_type->valuestring != NULL))
     {
@@ -200,14 +201,20 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
         
         ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
     }
-    
+
+    /*****************
+     * Parse Account *
+     *****************/
     json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
     {
         ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
         nl_address_to_public(block->account, json_account->valuestring);
     }
-    
+
+    /******************
+     * Parse Previous *
+     ******************/
     json_previous = cJSON_GetObjectItemCaseSensitive(nested_json, "previous");
     if (cJSON_IsString(json_previous) && (json_previous->valuestring != NULL))
     {
@@ -215,14 +222,20 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
                        json_previous->valuestring,
                        HEX_256, NULL, NULL, NULL);
     }
-    
+
+    /************************
+     * Parse Representative *
+     ************************/
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
     {
         ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
         nl_address_to_public(block->representative, json_account->valuestring);
     }
-    
+
+    /*******************
+     * Parse Signature *
+     *******************/
     json_signature = cJSON_GetObjectItemCaseSensitive(nested_json, "signature");
     if (cJSON_IsString(json_signature) && (json_signature->valuestring != NULL))
     {
@@ -263,14 +276,19 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
             nl_address_to_public(block->link, json_link->valuestring);
         }
     }
-    // End Parse Link
 
+    /**************
+     * Parse Work *
+     **************/
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
     {
         block->work = nl_parse_server_work_string(json_work->valuestring);
     }
-    
+
+    /*****************
+     * Parse Balance *
+     *****************/
     json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
     {
