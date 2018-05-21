@@ -63,26 +63,16 @@ uint32_t nanoparse_block_count( const char *json_data ){
     return count_int;
 }
 
-#if 0 
-nl_err_t get_work(hex256_t hash, uint64_t *work){
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
-   
-    strupper(hash);
-
-    snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
-    
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
-    
+nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
     const cJSON *json_work = NULL;
-    cJSON *json = cJSON_Parse((char *)rx_string);
+    cJSON *json = cJSON_Parse(json_data);
     
     json_work = cJSON_GetObjectItemCaseSensitive(json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
         *work = nl_parse_server_work_string(json_work->valuestring);
     }
     else{
-        ESP_LOGE(TAG, "Server didn't respond with valid WORK.");
+        ESP_LOGE(TAG, "Work Parse Failure.");
         return E_FAILURE;
     }
     
@@ -90,6 +80,8 @@ nl_err_t get_work(hex256_t hash, uint64_t *work){
     return E_SUCCESS;
 }
 
+
+#if 0 
 nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];

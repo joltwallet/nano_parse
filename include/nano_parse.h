@@ -10,7 +10,9 @@
 uint32_t nanoparse_block_count(const char *json_data);
 uint32_t nanoparse_lws_block_count();
 
-nl_err_t get_work(char *hash, uint64_t *work);
+nl_err_t nanoparse_work( const char *json_data, uint64_t *work);
+nl_err_t nanoparse_lws_work(const char *hash, uint64_t *work);
+
 int get_head(nl_block_t *block);
 nl_err_t get_block(char *block_hash, nl_block_t *block);
 nl_err_t get_pending(char *account_address,
