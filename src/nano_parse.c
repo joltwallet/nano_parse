@@ -302,26 +302,39 @@ nl_err_t nanoparse_pending_hash( const char *json_data,
     return outcome;
 }
 
+nl_err_t nanoparse_lws_process(nl_block_t *block){
+    nl_err_t res;
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
 
-#if 0 
-int process_block(nl_block_t *block){
-    
-    //Account (convert bin to address)
+    res = nanoparse_process(block, rpc_command, sizeof(rpc_command));
+    if( E_SUCCESS != res ){
+        return res;
+    }
+    return network_get_data((unsigned char *)rpc_command,
+            (unsigned char *)rx_string, sizeof(rx_string));
+}
+
+nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
+
+    /* Account Address (convert bin to address) */
     char account_address[ADDRESS_BUF_LEN];
     nl_err_t res;
-    res = nl_public_to_address(account_address,
-                               sizeof(account_address),
+    res = nl_public_to_address(account_address, sizeof(account_address),
                                block->account);
+    if( E_SUCCESS != res ){
+        return res;
+    }
     strlower(account_address);
     ESP_LOGI(TAG, "process_block: Address: %s", account_address);
     
-    //Previous (convert bin to hex)
+    /* Previous (convert bin to hex) */
     hex256_t previous_hex;
     sodium_bin2hex(previous_hex, sizeof(previous_hex),
                    block->previous, sizeof(block->previous));
     ESP_LOGI(TAG, "process_block: Previous: %s", previous_hex);
     
-    //Representative (convert bin to address)
+    /* Representative (convert bin to address) */
     char representative_address[ADDRESS_BUF_LEN];
     res = nl_public_to_address(representative_address,
                                sizeof(representative_address),
@@ -329,34 +342,34 @@ int process_block(nl_block_t *block){
     strlower(representative_address);
     ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
-    //Balance (convert mpi to string)
+    /* Balance (convert mpi to string) */
     char balance_buf[66];
     size_t n;
     memset(balance_buf, 0, sizeof(balance_buf));
     mbedtls_mpi_write_string(&(block->balance), 10, balance_buf, sizeof(balance_buf)-1, &n);
     ESP_LOGI(TAG, "process_block: Balance: %s", balance_buf);
     
-    //Link (convert bin to hex)
+    /* Link (convert bin to hex) */
     hex256_t link_hex;
     sodium_bin2hex(link_hex, sizeof(link_hex),
                    block->link, sizeof(block->link));
     strupper(link_hex);
     ESP_LOGI(TAG, "process_block: Link: %s", link_hex);
     
-    //Work (keep as hex)
-    ESP_LOGI(TAG, "process_block: Work: %llx", block->work);
+    /* Work (keep as hex; byteswap) */
+    hex64_t work;
+    nl_generate_server_work_string(work, block->work);
+    ESP_LOGI(TAG, "process_block: Work: %s", work);
     
-    //Signature (convert bin to hex)
+    /* Signature (convert bin to hex) */
     hex512_t signature_hex;
     sodium_bin2hex(signature_hex, sizeof(signature_hex),
                    block->signature, sizeof(block->signature));
     strupper(signature_hex);
     ESP_LOGI(TAG, "Block->signature: %s", signature_hex);
-    
-    char new_block[NANOPARSE_CMD_BUF_LEN];
-    hex64_t work;
-    nl_generate_server_work_string(work, block->work);
-    int error = snprintf( (char *) new_block, sizeof(new_block),
+   
+    /* Combine into rai_node RPC command */
+    int buf_req_len = snprintf( (char *) buf, buf_len,
                          "{"
                          "\"action\":\"process\","
                          "\"block\":\""
@@ -373,15 +386,12 @@ int process_block(nl_block_t *block){
                          "\"}",
             account_address, previous_hex, representative_address, balance_buf,
             link_hex, work, signature_hex);
-    
-    ESP_LOGI(TAG, "\nprocess_block: Block: %d\n%s\n", error, new_block);
-    
-    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
-    
-    network_get_data((unsigned char *)new_block, (unsigned char *)rx_string, sizeof(rx_string));
-    
-    ESP_LOGI(TAG, "%s\n", rx_string);
-    
-    return 0;
+
+    if(buf_req_len > buf_len){
+        return E_INSUFFICIENT_BUF;
+    }
+    else{
+        ESP_LOGI(TAG, "\nprocess_block: Block: %s\n", buf);
+        return E_SUCCESS;
+    }
 }
-#endif
