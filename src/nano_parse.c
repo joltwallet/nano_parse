@@ -80,22 +80,27 @@ nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
     return E_SUCCESS;
 }
 
-nl_err_t nanoparse_account_frontier(const char *json_data, const char *account_address, hex256_t frontier_block_hash){
+nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_block_hash){
     /* Returns the hash (33 characters) of the head block of the account */
     const cJSON *frontiers = NULL;
     const cJSON *account = NULL;
-    nl_err_t outcome;
+    nl_err_t outcome = E_FAILURE;
     
     cJSON *json = cJSON_Parse((char *)json_data);
     frontiers = cJSON_GetObjectItemCaseSensitive(json, "frontiers");
-    account = cJSON_GetObjectItemCaseSensitive(frontiers, account_address);
     
-    if (cJSON_IsString(account) && (account->valuestring != NULL)){
-        strlcpy(frontier_block_hash, account->valuestring, HEX_256);
-        outcome = E_SUCCESS;
-    }
-    else{
-        outcome = E_FAILURE;
+    cJSON *current_element = NULL;
+    char *current_key = NULL;
+    cJSON_ArrayForEach(current_element, frontiers){
+        current_key = current_element->string;
+        if (current_key != NULL) {
+            account = cJSON_GetObjectItemCaseSensitive(frontiers, current_key);
+            if (cJSON_IsString(account) && (account->valuestring != NULL)){
+                strlcpy(frontier_block_hash, account->valuestring, HEX_256);
+                outcome = E_SUCCESS;
+            }
+        }
+        break;
     }
     
     cJSON_Delete(json);
