@@ -79,22 +79,42 @@ TEST_CASE("Parse Open Block", TEST_TAG){
     nl_block_free( &pred );
 }
 
-#if 0
-    nl_block_t gt = {
-        .type = ,
-        .account = ,
-        .previous = ,
-        .representative = ,
-        .work = ,
-        .signature = ,
-        .link = ,
-        .balance = ,
-    }
-    mbedtls_mpi_read_string(&(gt.balance), 10, "")
-#endif
-
 TEST_CASE("Parse Send Block", TEST_TAG){
-    TEST_IGNORE();
+    nl_err_t res;
+    const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"send\\\",\\n    \\\"previous\\\": \\\"66B2E0C0D2971A6372184FC851C959D4A2993749C78BA845D707873FB2C2EFDA\\\",\\n    \\\"destination\\\": \\\"xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr\\\",\\n    \\\"balance\\\": \\\"0000000694140DC0A578AED10D000000\\\",\\n    \\\"work\\\": \\\"595ebaa13f83c1b2\\\",\\n    \\\"signature\\\": \\\"E523F20CAC1FF563F697C1D58E60FF0D72A9AC7B499799785490648E3F154FE4F464F6D7ECC4CD1A8072827E88F3D5805A8370F4A6DE06EDA8939E70E5113803\\\"\\n}\\n\"\n}\n";
+
+    // Setup Test Vector
+    nl_block_t gt;
+    sodium_memzero(&gt, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &gt );
+
+    gt.type = SEND;
+    //gt.account empty: no account provided
+    sodium_hex2bin(gt.previous, sizeof(gt.previous),
+            "66B2E0C0D2971A6372184FC851C959D4A2993749C78BA845D707873FB2C2EFDA",
+            HEX_256, NULL, NULL, NULL);
+    //gt.representative empty: no account provided
+    gt.work = nl_parse_server_work_string("595ebaa13f83c1b2");
+    sodium_hex2bin(gt.signature, sizeof(gt.signature),
+            "E523F20CAC1FF563F697C1D58E60FF0D72A9AC7B499799785490648E3F154FE4"
+            "F464F6D7ECC4CD1A8072827E88F3D5805A8370F4A6DE06EDA8939E70E5113803",
+            HEX_512, NULL, NULL, NULL);
+    nl_address_to_public(gt.link, "xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr");
+    mbedtls_mpi_read_string(&(gt.balance), 16, "0000000694140DC0A578AED10D000000");
+    
+    // Test Parser
+    nl_block_t pred;
+    sodium_memzero(&pred, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &pred );
+    res =  nanoparse_block(json_data, &pred);
+
+    TEST_ASSERT_EQUAL(E_SUCCESS, res);
+    // Can't memcmp mbedtls_mpi since its a pointer
+    TEST_ASSERT_EQUAL_MEMORY(&gt, &pred, sizeof(nl_block_t) - sizeof(mbedtls_mpi));
+    TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_mpi(&(gt.balance), &(pred.balance)));
+
+    nl_block_free( &gt );
+    nl_block_free( &pred );
 }
 
 TEST_CASE("Parse Receive Block", TEST_TAG){

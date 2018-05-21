@@ -246,12 +246,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         mbedtls_mpi current_balance;
         mbedtls_mpi_init(&current_balance);
         if (block->type == SEND){
-            ESP_LOGI(TAG, "Found SEND");
             mbedtls_mpi_read_string(&current_balance, 16, json_balance->valuestring);
-            static char buf[64];
-            size_t n;
-            memset(buf, 0, sizeof(buf));
-            mbedtls_mpi_write_string(&current_balance, 10, buf, sizeof(buf)-1, &n);
         }
         else {
             mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
