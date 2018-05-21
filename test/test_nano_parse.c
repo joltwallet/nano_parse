@@ -158,7 +158,41 @@ TEST_CASE("Parse Receive Block", TEST_TAG){
 }
 
 TEST_CASE("Parse Change Block", TEST_TAG){
-    TEST_IGNORE();
+    nl_err_t res;
+    const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"change\\\",\\n    \\\"previous\\\": \\\"AF9C1D46AAE66CC8F827904ED02D4B3D95AA98B1FF058352BA6B670BEFD40231\\\",\\n    \\\"representative\\\": \\\"xrb_1cwswatjifmjnmtu5toepkwca64m7qtuukizyjxsghujtpdr9466wjmn89d8\\\",\\n    \\\"work\\\": \\\"e8c2c556c9cfb6e2\\\",\\n    \\\"signature\\\": \\\"A039A7BF5E54B44F45A8E1AD9940A81C87CC66C04AFA738367956629A5EF49E49D297FA3CDD195BDA8373D144F9E1D4641737E7F372CEAB5AD2F3B8E9852A30D\\\"\\n}\\n\"\n}\n";
+
+    // Setup Test Vector
+    nl_block_t gt;
+    sodium_memzero(&gt, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &gt );
+
+    gt.type = CHANGE;
+    //gt.account empty: no account provided
+    sodium_hex2bin(gt.previous, sizeof(gt.previous),
+            "AF9C1D46AAE66CC8F827904ED02D4B3D95AA98B1FF058352BA6B670BEFD40231",
+            HEX_256, NULL, NULL, NULL);
+    nl_address_to_public(gt.representative, "xrb_1cwswatjifmjnmtu5toepkwca64m7qtuukizyjxsghujtpdr9466wjmn89d8");
+    gt.work = nl_parse_server_work_string("e8c2c556c9cfb6e2");
+    sodium_hex2bin(gt.signature, sizeof(gt.signature),
+            "A039A7BF5E54B44F45A8E1AD9940A81C87CC66C04AFA738367956629A5EF49E4"
+            "9D297FA3CDD195BDA8373D144F9E1D4641737E7F372CEAB5AD2F3B8E9852A30D",
+            HEX_512, NULL, NULL, NULL);
+    sodium_memzero(gt.link, sizeof(gt.link));
+    //gt.balance empty: no balance provided
+    
+    // Test Parser
+    nl_block_t pred;
+    sodium_memzero(&pred, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &pred );
+    res =  nanoparse_block(json_data, &pred);
+
+    TEST_ASSERT_EQUAL(E_SUCCESS, res);
+    // Can't memcmp mbedtls_mpi since its a pointer
+    TEST_ASSERT_EQUAL_MEMORY(&gt, &pred, sizeof(nl_block_t) - sizeof(mbedtls_mpi));
+    TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_mpi(&(gt.balance), &(pred.balance)));
+
+    nl_block_free( &gt );
+    nl_block_free( &pred );
 }
 
 TEST_CASE("Parse State Block", TEST_TAG){
