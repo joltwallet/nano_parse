@@ -46,7 +46,7 @@ char* replace(char* str, char* a, char* b)
 
 uint32_t nanoparse_block_count( const char *json_data ){
     /* Parses rai_node rpc response for action "block count"
-     * Returns network block count */
+     * Returns uint32_t network block count */
     uint32_t count_int;
     const cJSON *count = NULL;
     cJSON *json = cJSON_Parse(json_data);
@@ -64,6 +64,8 @@ uint32_t nanoparse_block_count( const char *json_data ){
 }
 
 nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
+    /* Parses rai_node rpc response for "work_generate"
+     * Returns uint64_t work */
     const cJSON *json_work = NULL;
     cJSON *json = cJSON_Parse(json_data);
     
@@ -108,6 +110,10 @@ nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_blo
 }
 
 nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
+    /* Parses rai_node rpc response to "block".
+     * Returns populated block */
+    uint8_t n_parse = 0, expected_n_parse = 0;
+    nl_err_t outcome; // return value
     const cJSON *json_contents = NULL;
     const cJSON *json_type = NULL;
     const cJSON *json_previous = NULL;
@@ -142,20 +148,31 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
     if (cJSON_IsString(json_type) && (json_type->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Type: %s", json_type->valuestring);
+
+        n_parse++; //pre-emptively increment valid parse counter
         if (strcmp(json_type->valuestring, "state") == 0){
             block->type = STATE;
+            expected_n_parse = 8;
         }
         else if (strcmp(json_type->valuestring, "send") == 0){
             block->type = SEND;
+            expected_n_parse = 6;
         }
         else if (strcmp(json_type->valuestring, "receive") == 0){
             block->type = RECEIVE;
+            expected_n_parse = 5;
         }
         else if (strcmp(json_type->valuestring, "open") == 0){
             block->type = OPEN;
+            expected_n_parse = 6;
         }
         else if (strcmp(json_type->valuestring, "change") == 0){
             block->type = CHANGE;
+            expected_n_parse = 5;
+        }
+        else{
+            outcome = E_FAILURE;
+            goto exit;
         }
         
         ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
@@ -167,7 +184,11 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
-        nl_address_to_public(block->account, json_account->valuestring);
+        outcome = nl_address_to_public(block->account, json_account->valuestring);
+        if( E_SUCCESS != outcome){
+            goto exit;
+        }
+        n_parse++;
     }
 
     /******************
@@ -186,7 +207,11 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
-        nl_address_to_public(block->representative, json_representative->valuestring);
+        outcome = nl_address_to_public(block->representative, json_representative->valuestring);
+        if( E_SUCCESS != outcome){
+            goto exit;
+        }
+        n_parse++;
     }
 
     /*******************
@@ -198,6 +223,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->signature, sizeof(block->signature),
                        json_signature->valuestring,
                        HEX_512, NULL, NULL, NULL);
+        n_parse++;
     }
     
     /**************
@@ -208,12 +234,6 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     // For change: link is nothing
     // For send: link is destination pub key ("destination")
     // For receive: link is hash of the pairing send block ("source")
-    if (cJSON_IsString(json_link) && (json_link->valuestring != NULL)){
-        sodium_hex2bin(block->link, sizeof(block->link),
-                       json_link->valuestring,
-                       HEX_256, NULL, NULL, NULL);
-    }
-
     if ( block->type == STATE ){
         json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "link");
     }
@@ -224,11 +244,16 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->link, sizeof(block->link),
                        json_link->valuestring,
                        HEX_256, NULL, NULL, NULL);
+        n_parse++;
     }
     else if(block->type == SEND ){
         json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "destination");
         if ( cJSON_IsString(json_link) && (json_link->valuestring != NULL) ){
-            nl_address_to_public(block->link, json_link->valuestring);
+            outcome = nl_address_to_public(block->link, json_link->valuestring);
+            if( E_SUCCESS != outcome){
+                goto exit;
+            }
+            n_parse++;
         }
     }
 
@@ -238,7 +263,9 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Work: %s", json_work->valuestring);
+        // todo: error handle nl_parse_server_work_string
         block->work = nl_parse_server_work_string(json_work->valuestring);
+        n_parse++;
     }
 
     /*****************
@@ -250,6 +277,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         
         mbedtls_mpi current_balance;
         mbedtls_mpi_init(&current_balance);
+        // todo: error handle mbed_mpi_read_string
         if (block->type == SEND){
             mbedtls_mpi_read_string(&current_balance, 16, json_balance->valuestring);
         }
@@ -258,10 +286,23 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         }
         mbedtls_mpi_copy( &(block->balance), &current_balance);
         mbedtls_mpi_free (&current_balance);
+        n_parse++;
     }
-    cJSON_Delete(json);
-    
-    return E_SUCCESS;
+
+    /***********************
+     * Confirm Parse Count *
+     ***********************/
+    if(n_parse == expected_n_parse){
+        outcome = E_SUCCESS;
+    }
+    else{
+        outcome = E_FAILURE;
+        goto exit;
+    }
+
+    exit:
+        cJSON_Delete(json);
+        return E_SUCCESS;
 }
 
 
@@ -300,19 +341,6 @@ nl_err_t nanoparse_pending_hash( const char *json_data,
     
     cJSON_Delete(json);
     return outcome;
-}
-
-nl_err_t nanoparse_lws_process(nl_block_t *block){
-    nl_err_t res;
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
-
-    res = nanoparse_process(block, rpc_command, sizeof(rpc_command));
-    if( E_SUCCESS != res ){
-        return res;
-    }
-    return network_get_data((unsigned char *)rpc_command,
-            (unsigned char *)rx_string, sizeof(rx_string));
 }
 
 nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){

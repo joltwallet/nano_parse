@@ -22,6 +22,7 @@ nl_err_t nanoparse_lws_pending_hash( const char *account_address,
 
 
 nl_err_t nanoparse_lws_frontier_block(nl_block_t *block);
+nl_err_t nanoparse_lws_process(nl_block_t *block);
 
 
 #if 0

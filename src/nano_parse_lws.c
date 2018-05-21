@@ -120,5 +120,18 @@ nl_err_t nanoparse_lws_frontier_block(nl_block_t *block){
     return nanoparse_lws_block(frontier_block_hash, block);
 }
 
+nl_err_t nanoparse_lws_process(nl_block_t *block){
+    nl_err_t res;
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
+
+    res = nanoparse_process(block, rpc_command, sizeof(rpc_command));
+    if( E_SUCCESS != res ){
+        return res;
+    }
+    return network_get_data((unsigned char *)rpc_command,
+            (unsigned char *)rx_string, sizeof(rx_string));
+}
+
 #endif
 
