@@ -118,7 +118,43 @@ TEST_CASE("Parse Send Block", TEST_TAG){
 }
 
 TEST_CASE("Parse Receive Block", TEST_TAG){
-    TEST_IGNORE();
+    nl_err_t res;
+    const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"receive\\\",\\n    \\\"previous\\\": \\\"755F515E56D7AE5467D454C61304320CA7363449580DE3B40B0F51C816C9A8F9\\\",\\n    \\\"source\\\": \\\"58C5B5344D85AAAEF1E7980B25E93DFB4834B6185EAD9A546D43F400370E1188\\\",\\n    \\\"work\\\": \\\"0c6589b8125613d8\\\",\\n    \\\"signature\\\": \\\"14EF1B6FA1CCD0B56EC2D8213A0708701BA322C3C3CB592D5C85D005CD3D51F24F4EE5954FE3C1EB5839004B7541E742AA1F7870FD81220A02319B96105D2D04\\\"\\n}\\n\"\n}\n";
+
+    // Setup Test Vector
+    nl_block_t gt;
+    sodium_memzero(&gt, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &gt );
+
+    gt.type = RECEIVE;
+    //gt.account empty: no account provided
+    sodium_hex2bin(gt.previous, sizeof(gt.previous),
+            "755F515E56D7AE5467D454C61304320CA7363449580DE3B40B0F51C816C9A8F9",
+            HEX_256, NULL, NULL, NULL);
+    //gt.representative empty: no account provided
+    gt.work = nl_parse_server_work_string("0c6589b8125613d8");
+    sodium_hex2bin(gt.signature, sizeof(gt.signature),
+            "14EF1B6FA1CCD0B56EC2D8213A0708701BA322C3C3CB592D5C85D005CD3D51F2"
+            "4F4EE5954FE3C1EB5839004B7541E742AA1F7870FD81220A02319B96105D2D04",
+            HEX_512, NULL, NULL, NULL);
+    sodium_hex2bin(gt.link, sizeof(gt.link),
+            "58C5B5344D85AAAEF1E7980B25E93DFB4834B6185EAD9A546D43F400370E1188",
+            HEX_256, NULL, NULL, NULL);
+    //gt.balance empty: no balance provided
+    
+    // Test Parser
+    nl_block_t pred;
+    sodium_memzero(&pred, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &pred );
+    res =  nanoparse_block(json_data, &pred);
+
+    TEST_ASSERT_EQUAL(E_SUCCESS, res);
+    // Can't memcmp mbedtls_mpi since its a pointer
+    TEST_ASSERT_EQUAL_MEMORY(&gt, &pred, sizeof(nl_block_t) - sizeof(mbedtls_mpi));
+    TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_mpi(&(gt.balance), &(pred.balance)));
+
+    nl_block_free( &gt );
+    nl_block_free( &pred );
 }
 
 TEST_CASE("Parse Change Block", TEST_TAG){
