@@ -80,31 +80,17 @@ nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
     return E_SUCCESS;
 }
 
-
-#if 0 
-nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
-    int outcome;
-    
-    strlower(account_address);
-    snprintf( (char *) rpc_command, sizeof(rpc_command),
-            "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
-            account_address);
-    
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
-    
+nl_err_t nanoparse_account_frontier(const char *json_data, const char *account_address, hex256_t frontier_block_hash){
+    /* Returns the hash (33 characters) of the head block of the account */
     const cJSON *frontiers = NULL;
     const cJSON *account = NULL;
+    nl_err_t outcome;
     
-    cJSON *json = cJSON_Parse((char *)rx_string);
-    
+    cJSON *json = cJSON_Parse((char *)json_data);
     frontiers = cJSON_GetObjectItemCaseSensitive(json, "frontiers");
-    
     account = cJSON_GetObjectItemCaseSensitive(frontiers, account_address);
     
-    if (cJSON_IsString(account) && (account->valuestring != NULL))
-    {
+    if (cJSON_IsString(account) && (account->valuestring != NULL)){
         strlcpy(frontier_block_hash, account->valuestring, HEX_256);
         outcome = E_SUCCESS;
     }
@@ -113,10 +99,10 @@ nl_err_t get_frontier(char *account_address, hex256_t frontier_block_hash){
     }
     
     cJSON_Delete(json);
-    
     return outcome;
 }
 
+#if 0 
 nl_err_t get_block(char *block_hash, nl_block_t *block){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];

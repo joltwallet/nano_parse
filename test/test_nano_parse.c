@@ -28,8 +28,16 @@ TEST_CASE("Work", TEST_TAG){
     TEST_ASSERT_EQUAL_UINT(3512101046, work);
 }
 
-TEST_CASE("Head Block Hash", TEST_TAG){
-    TEST_IGNORE();
+TEST_CASE("Account Frontier Hash", TEST_TAG){
+    const char *json_data = "{\n    \"frontiers\": {\n        \"xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb\": \"33832030C4F99FD37C8CD8399911D47150FCB90AE3A791970DBC8D05DFF93B8B\"\n    }\n}\n";
+    hex256_t hash;
+    nl_err_t err;
+    err = nanoparse_account_frontier(json_data,
+            "xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb",
+            hash);
+    TEST_ASSERT_EQUAL_STRING(
+            "33832030C4F99FD37C8CD8399911D47150FCB90AE3A791970DBC8D05DFF93B8B",
+            hash);
 }
 
 TEST_CASE("Parse Open Block", TEST_TAG){

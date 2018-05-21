@@ -94,4 +94,13 @@ TEST_CASE("WiFi Block Count", TEST_TAG){
     TEST_ASSERT_MESSAGE(0 < count, "Block Count Zero");
 }
 
+TEST_CASE("Account Frontier Hash", TEST_TAG){
+    hex256_t block_hash;
+    nanoparse_lws_account_frontier(
+            "xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb",
+            block_hash);
+    TEST_ASSERT_EQUAL_STRING(
+            "33832030C4F99FD37C8CD8399911D47150FCB90AE3A791970DBC8D05DFF93B8B",
+            block_hash);
+}
 #endif
