@@ -102,17 +102,7 @@ nl_err_t nanoparse_account_frontier(const char *json_data, const char *account_a
     return outcome;
 }
 
-#if 0 
-nl_err_t get_block(char *block_hash, nl_block_t *block){
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
-
-    snprintf( (char *) rpc_command, sizeof(rpc_command),
-             "{\"action\":\"block\",\"hash\":\"%s\"}",
-             block_hash);
-    
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
-    
+nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     const cJSON *json_contents = NULL;
     const cJSON *json_type = NULL;
     const cJSON *json_previous = NULL;
@@ -123,7 +113,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     const cJSON *json_work = NULL;
     const cJSON *json_signature = NULL;
     
-    cJSON *json = cJSON_Parse((char *)rx_string);
+    cJSON *json = cJSON_Parse((char *)json_data);
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
     char *string = cJSON_Print(json_contents);
     
@@ -145,8 +135,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Block Type *
      ********************/
     json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
-    if (cJSON_IsString(json_type) && (json_type->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_type) && (json_type->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Type: %s", json_type->valuestring);
         if (strcmp(json_type->valuestring, "state") == 0){
             block->type = STATE;
@@ -171,8 +160,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Account *
      *****************/
     json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
-    if (cJSON_IsString(json_account) && (json_account->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_account) && (json_account->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
         nl_address_to_public(block->account, json_account->valuestring);
     }
@@ -181,8 +169,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Previous *
      ******************/
     json_previous = cJSON_GetObjectItemCaseSensitive(nested_json, "previous");
-    if (cJSON_IsString(json_previous) && (json_previous->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_previous) && (json_previous->valuestring != NULL)){
         sodium_hex2bin(block->previous, sizeof(block->previous),
                        json_previous->valuestring,
                        HEX_256, NULL, NULL, NULL);
@@ -192,18 +179,17 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Representative *
      ************************/
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
-    if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
-        nl_address_to_public(block->representative, json_account->valuestring);
+        nl_address_to_public(block->representative, json_representative->valuestring);
     }
 
     /*******************
      * Parse Signature *
      *******************/
     json_signature = cJSON_GetObjectItemCaseSensitive(nested_json, "signature");
-    if (cJSON_IsString(json_signature) && (json_signature->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_signature) && (json_signature->valuestring != NULL)){
+        ESP_LOGI(TAG, "get_block: Signature: %s", json_signature->valuestring);
         sodium_hex2bin(block->signature, sizeof(block->signature),
                        json_signature->valuestring,
                        HEX_512, NULL, NULL, NULL);
@@ -217,8 +203,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     // For change: link is nothing
     // For send: link is destination pub key ("destination")
     // For receive: link is hash of the pairing send block ("source")
-    if (cJSON_IsString(json_link) && (json_link->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_link) && (json_link->valuestring != NULL)){
         sodium_hex2bin(block->link, sizeof(block->link),
                        json_link->valuestring,
                        HEX_256, NULL, NULL, NULL);
@@ -246,8 +231,8 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Work *
      **************/
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
-    if (cJSON_IsString(json_work) && (json_work->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
+        ESP_LOGI(TAG, "get_block: Work: %s", json_work->valuestring);
         block->work = nl_parse_server_work_string(json_work->valuestring);
     }
 
@@ -255,8 +240,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
      * Parse Balance *
      *****************/
     json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
-    if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL))
-    {
+    if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Balance: %s\n", json_balance->valuestring);
         
         mbedtls_mpi current_balance;
@@ -280,6 +264,7 @@ nl_err_t get_block(char *block_hash, nl_block_t *block){
     return E_SUCCESS;
 }
 
+#if 0 
 nl_err_t get_pending(char *account_address,
         hex256_t pending_block_hash, mbedtls_mpi *amount){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];

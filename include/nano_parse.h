@@ -16,6 +16,11 @@ nl_err_t nanoparse_lws_work(const char *hash, uint64_t *work);
 nl_err_t nanoparse_account_frontier(const char *json_data, const char *account_address, hex256_t frontier_block_hash);
 nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t frontier_block_hash);
 
+nl_err_t nanoparse_block(const char *json_data, nl_block_t *block);
+nl_err_t nanoparse_lws_block(char *block_hash, nl_block_t *block);
+
+
+
 int get_head(nl_block_t *block);
 nl_err_t get_block(char *block_hash, nl_block_t *block);
 nl_err_t get_pending(char *account_address,

@@ -54,5 +54,17 @@ nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t fr
     return nanoparse_frontier(rx_string, account_address, frontier_block_hash);
 }
 
+nl_err_t nanoparse_lws_block(char *block_hash, nl_block_t *block){
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
+
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
+             "{\"action\":\"block\",\"hash\":\"%s\"}",
+             block_hash);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+
+    return nanoparse_block(rx_string, block);
+}
+
 #endif
 
