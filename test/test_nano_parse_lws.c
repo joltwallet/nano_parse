@@ -94,7 +94,7 @@ TEST_CASE("WiFi Block Count", TEST_TAG){
     TEST_ASSERT_MESSAGE(0 < count, "Block Count Zero");
 }
 
-TEST_CASE("Account Frontier Hash", TEST_TAG){
+TEST_CASE("WiFi Account Frontier Hash", TEST_TAG){
     hex256_t block_hash;
     nanoparse_lws_account_frontier(
             "xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb",
@@ -102,5 +102,44 @@ TEST_CASE("Account Frontier Hash", TEST_TAG){
     TEST_ASSERT_EQUAL_STRING(
             "33832030C4F99FD37C8CD8399911D47150FCB90AE3A791970DBC8D05DFF93B8B",
             block_hash);
+}
+
+TEST_CASE("WiFi Account Frontier Block", TEST_TAG){
+    nl_err_t res;
+
+    /* Setup Test Vector */
+    nl_block_t gt;
+    sodium_memzero(&gt, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &gt );
+
+    gt.type = STATE;
+    nl_address_to_public(gt.account, "xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr");
+    sodium_hex2bin(gt.previous, sizeof(gt.previous),
+            "99C7D1D10922710A9DA3ACECF6C060884E3CA1DE06C45667192119A66D2A5EBC",
+            HEX_256, NULL, NULL, NULL);
+    nl_address_to_public(gt.representative, "xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr");
+    gt.work = nl_parse_server_work_string("2d10d91bdc488a14");
+    sodium_hex2bin(gt.signature, sizeof(gt.signature),
+            "023C68D94EAB98ABB84DB5FE73D21130AF8D9984457491A59B6193C49E5633E3"
+            "BC0932ECA1F6E536B876D7B7330CB7AC4A85B388BC59CC42C625BE1EB06AC90C",
+            HEX_512, NULL, NULL, NULL);
+    sodium_hex2bin(gt.link, sizeof(gt.link),
+            "261F4B979009FD5665331AC72A95C8906285DCCAAACE2FD0F07AA39D738A1216",
+            HEX_256, NULL, NULL, NULL);
+    mbedtls_mpi_read_string(&(gt.balance), 10, "0");
+
+    /* Test Parser */
+    nl_block_t pred;
+    sodium_memzero(&pred, sizeof(nl_block_t)); // Deterministic Test Compare
+    nl_block_init( &pred );
+    nl_address_to_public(pred.account, "xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr");
+
+    res =  nanoparse_lws_frontier_block(&pred);
+    TEST_ASSERT_EQUAL(E_SUCCESS, res);
+    TEST_ASSERT_EQUAL_MEMORY(&gt, &pred, sizeof(nl_block_t) - sizeof(mbedtls_mpi));
+    TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_mpi(&(gt.balance), &(pred.balance)));
+
+    nl_block_free( &gt );
+    nl_block_free( &pred );
 }
 #endif
