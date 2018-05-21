@@ -19,6 +19,11 @@ nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t fr
 nl_err_t nanoparse_block(const char *json_data, nl_block_t *block);
 nl_err_t nanoparse_lws_block(char *block_hash, nl_block_t *block);
 
+nl_err_t nanoparse_pending_hash( const char *json_data,
+        hex256_t pending_block_hash, mbedtls_mpi *amount);
+nl_err_t nanoparse_lws_pending_hash( const char *account_address,
+        hex256_t pending_block_hash, mbedtls_mpi *amount);
+
 
 
 int get_head(nl_block_t *block);

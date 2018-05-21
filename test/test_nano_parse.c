@@ -234,3 +234,17 @@ TEST_CASE("Parse State Block", TEST_TAG){
     nl_block_free( &gt );
     nl_block_free( &pred );
 }
+
+TEST_CASE("Pending Hash and Amount", TEST_TAG){
+    nl_err_t res;
+    hex256_t pending_hash;
+    mbedtls_mpi amount;
+    mbedtls_mpi_init( &amount );
+    const char *json_data = "{\n    \"blocks\": {\n        \"xrb_1111111111111111111111111111111111111111111111111111hifc8npp\": {\n            \"00003F1C2F438F98F77771BBD140A58E976BF7A3B2D8EA8D9016DA7AED92EB14\": {\n                \"amount\": \"1\",\n                \"source\": \"xrb_1hnt56nto4id54wt66rpttwd4xgmzucohdpeacc3yzrnzr9g1tm9tkk9s8jc\"\n            }\n        }\n    }\n}\n";
+    res = nanoparse_pending_hash( json_data, pending_hash, &amount);
+
+    TEST_ASSERT_EQUAL(E_SUCCESS, res);
+    TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_int(&(amount), 1));
+
+    mbedtls_mpi_free( &amount );
+}

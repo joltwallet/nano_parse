@@ -66,5 +66,22 @@ nl_err_t nanoparse_lws_block(char *block_hash, nl_block_t *block){
     return nanoparse_block(rx_string, block);
 }
 
+nl_err_t nanoparse_lws_pending_hash( const char *account_address,
+        hex256_t pending_block_hash, mbedtls_mpi *amount){
+    char rpc_command[NANOPARSE_CMD_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
+    
+    strlower(account_address);
+    snprintf( (char *) rpc_command, sizeof(rpc_command),
+             "{\"action\":\"accounts_pending\","
+             "\"count\": 1,"
+             "\"source\": \"true\","
+             "\"accounts\":[\"%s\"]}",
+             account_address);
+    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+
+    return nanoparse_pending_hash(rx_string, pending_block_hash, amount);
+}
+
 #endif
 

@@ -259,52 +259,45 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     return E_SUCCESS;
 }
 
-#if 0 
-nl_err_t get_pending(char *account_address,
-        hex256_t pending_block_hash, mbedtls_mpi *amount){
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
 
+nl_err_t nanoparse_pending_hash( const char *json_data,
+        hex256_t pending_block_hash, mbedtls_mpi *amount){
     nl_err_t outcome = E_FAILURE;
-    
-    strlower(account_address);
-    
-    snprintf( (char *) rpc_command, sizeof(rpc_command),
-             "{\"action\":\"accounts_pending\","
-             "\"count\": 1,"
-             "\"source\": \"true\","
-             "\"accounts\":[\"%s\"]}",
-             account_address);
-    
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
-    
     const cJSON *blocks = NULL;
     const cJSON *account = NULL;
     
-    cJSON *json = cJSON_Parse((char *)rx_string);
+    cJSON *json = cJSON_Parse(json_data);
     
     blocks = cJSON_GetObjectItemCaseSensitive(json, "blocks");
-    account = cJSON_GetObjectItemCaseSensitive(blocks, account_address);
 
     cJSON *current_element = NULL;
     char *current_key = NULL;
-    cJSON_ArrayForEach(current_element, account) {
+    cJSON_ArrayForEach(current_element, blocks){
         current_key = current_element->string;
         if (current_key != NULL) {
-            strlcpy(pending_block_hash, current_key, HEX_256);
-            const cJSON *pending_contents = cJSON_GetObjectItemCaseSensitive(
-                    account, current_key);
-            const cJSON *amount_obj = cJSON_GetObjectItemCaseSensitive(
-                    pending_contents, "amount");
-            mbedtls_mpi_read_string(amount, 10, amount_obj->valuestring);
-            outcome = E_SUCCESS;
+            account = cJSON_GetObjectItemCaseSensitive(blocks, current_key);
+            cJSON_ArrayForEach(current_element, account) {
+                current_key = current_element->string;
+                if (current_key != NULL) {
+                    strlcpy(pending_block_hash, current_key, HEX_256);
+                    const cJSON *pending_contents = cJSON_GetObjectItemCaseSensitive(
+                            account, current_key);
+                    const cJSON *amount_obj = cJSON_GetObjectItemCaseSensitive(
+                            pending_contents, "amount");
+                    mbedtls_mpi_read_string(amount, 10, amount_obj->valuestring);
+                    outcome = E_SUCCESS;
+                }
+                break;
+            }
         }
+        break;
     }
     
     cJSON_Delete(json);
     return outcome;
 }
 
+#if 0 
 int get_head(nl_block_t *block){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
