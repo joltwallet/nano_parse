@@ -1,0 +1,10 @@
+menu "nano_parse"
+
+    config NANOPARSE_BUILD_W_LWS
+        bool
+        prompt "Build with LWS helpers"
+        default true
+        help
+            help text
+
+endmenu
