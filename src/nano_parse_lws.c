@@ -54,7 +54,7 @@ nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t fr
     return nanoparse_account_frontier(rx_string, frontier_block_hash);
 }
 
-nl_err_t nanoparse_lws_block(const char *block_hash, nl_block_t *block){
+nl_err_t nanoparse_lws_block(const hex256_t block_hash, nl_block_t *block){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
 
@@ -94,8 +94,6 @@ nl_err_t nanoparse_lws_frontier_block(nl_block_t *block){
      */
 
     char address[ADDRESS_BUF_LEN];
-    char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    char rx_string[NANOPARSE_RX_BUF_LEN];
    
     // Convert public key to an address
     nl_err_t res;
