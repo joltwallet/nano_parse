@@ -71,7 +71,6 @@ nl_err_t nanoparse_lws_pending_hash( const char *account_address,
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
     
-    strlower(account_address);
     snprintf( (char *) rpc_command, sizeof(rpc_command),
              "{\"action\":\"accounts_pending\","
              "\"count\": 1,"
