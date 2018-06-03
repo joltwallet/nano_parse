@@ -385,11 +385,8 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     /* Account Address (convert bin to address) */
     char account_address[ADDRESS_BUF_LEN];
     nl_err_t res;
-    res = nl_public_to_address(account_address, sizeof(account_address),
-                               block->account);
-    if( E_SUCCESS != res ){
-        return res;
-    }
+    nl_public_to_address(account_address, sizeof(account_address),
+            block->account);
     strlower(account_address);
     ESP_LOGI(TAG, "process_block: Address: %s", account_address);
     
@@ -402,8 +399,7 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     /* Representative (convert bin to address) */
     char representative_address[ADDRESS_BUF_LEN];
     res = nl_public_to_address(representative_address,
-                               sizeof(representative_address),
-                               block->representative);
+            sizeof(representative_address), block->representative);
     strlower(representative_address);
     ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
@@ -435,20 +431,18 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
    
     /* Combine into rai_node RPC command */
     int buf_req_len = snprintf( (char *) buf, buf_len,
-                         "{"
-                         "\"action\":\"process\","
-                         "\"block\":\""
-                         "{"
-                         "\\\"type\\\":\\\"state\\\","
-                         "\\\"account\\\":\\\"%s\\\","
-                         "\\\"previous\\\":\\\"%s\\\","
-                         "\\\"representative\\\":\\\"%s\\\","
-                         "\\\"balance\\\":\\\"%s\\\","
-                         "\\\"link\\\":\\\"%s\\\","
-                         "\\\"work\\\":\\\"%s\\\","
-                         "\\\"signature\\\":\\\"%s\\\""
-                         "}"
-                         "\"}",
+            "{"
+                "\"action\":\"process\","
+                "\"block\":\"{"
+                    "\\\"type\\\":\\\"state\\\","
+                    "\\\"account\\\":\\\"%s\\\","
+                    "\\\"previous\\\":\\\"%s\\\","
+                    "\\\"representative\\\":\\\"%s\\\","
+                    "\\\"balance\\\":\\\"%s\\\","
+                    "\\\"link\\\":\\\"%s\\\","
+                    "\\\"work\\\":\\\"%s\\\","
+                    "\\\"signature\\\":\\\"%s\\\""
+            "}\"}",
             account_address, previous_hex, representative_address, balance_buf,
             link_hex, work, signature_hex);
 
