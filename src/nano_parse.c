@@ -33,8 +33,10 @@
 
 static const char TAG[] = "nano_parse";
 
-char* deblank(char* input)
-{
+
+static char* deblank( char* input ) {
+    /* Replaces all spaces from input string */
+
     int i,j;
     char *output=input;
     for (i = 0, j = 0; i<strlen(input); i++,j++)
@@ -48,14 +50,18 @@ char* deblank(char* input)
     return output;
 }
 
-char* replace(char* str, char* a, char* b)
-{
+static char* replace(char* str, char* a, char* b) {
+    /* Replaces all occurences of string "a" with string "b" in str */
+    if( strlen(b) > strlen(a) ){
+        return NULL;
+    }
     int len  = strlen(str);
     int lena = strlen(a), lenb = strlen(b);
     for (char* p = str; (p = strstr(p, a)); ++p) {
-        if (lena != lenb) // shift end as needed
+        if (lena != lenb) { // shift end as needed
             memmove(p+lenb, p+lena,
                     len - (p - str) + lenb);
+        }
         memcpy(p, b, lenb);
     }
     return str;
@@ -63,7 +69,9 @@ char* replace(char* str, char* a, char* b)
 
 uint32_t nanoparse_block_count( const char *json_data ){
     /* Parses rai_node rpc response for action "block count"
-     * Returns uint32_t network block count */
+     * Returns uint32_t network block count 
+     * Returns 0 on error
+     * */
     uint32_t count_int;
     const cJSON *count = NULL;
     cJSON *json = cJSON_Parse(json_data);
@@ -83,20 +91,27 @@ uint32_t nanoparse_block_count( const char *json_data ){
 nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
     /* Parses rai_node rpc response for "work_generate"
      * Returns uint64_t work */
+    nl_err_t outcome;
     const cJSON *json_work = NULL;
     cJSON *json = cJSON_Parse(json_data);
     
     json_work = cJSON_GetObjectItemCaseSensitive(json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
-        *work = nl_parse_server_work_string(json_work->valuestring);
+        outcome = nl_parse_server_work_string(json_work->valuestring, work);
+        if( E_SUCCESS != outcome ){
+            goto exit;
+        }
+        outcome = E_SUCCESS;
     }
     else{
         ESP_LOGE(TAG, "Work Parse Failure.");
-        return E_FAILURE;
+        outcome = E_FAILURE;
+        goto exit;
     }
-    
-    cJSON_Delete(json);
-    return E_SUCCESS;
+
+    exit:
+        cJSON_Delete(json);
+        return outcome;
 }
 
 nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_block_hash){
@@ -129,7 +144,7 @@ nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_blo
 nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     /* Parses rai_node rpc response to "block".
      * Returns populated block */
-    uint8_t n_parse = 0, expected_n_parse = 0;
+    uint8_t n_parse = 0, expected_n_parse;
     nl_err_t outcome; // return value
     const cJSON *json_contents = NULL;
     const cJSON *json_type = NULL;
@@ -143,11 +158,19 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     
     cJSON *json = cJSON_Parse((char *)json_data);
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
+    if(!json_contents){
+        json_contents = json;
+    }
     char *string = cJSON_Print(json_contents);
     
     ESP_LOGI(TAG, "get_block: %s", string);
     
     char* new_string = replace(string, "\\n", "\\");
+    if( NULL == new_string ) {
+        outcome = E_FAILURE;
+        goto exit;
+    }
+
     for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
         *p = ' ';
     }
@@ -166,7 +189,6 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     if (cJSON_IsString(json_type) && (json_type->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Type: %s", json_type->valuestring);
 
-        n_parse++; //pre-emptively increment valid parse counter
         if (strcmp(json_type->valuestring, "state") == 0){
             block->type = STATE;
             expected_n_parse = 8;
@@ -192,7 +214,12 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             goto exit;
         }
         
+        n_parse++;
         ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
+    }
+    else {
+        outcome = E_FAILURE;
+        goto exit;
     }
 
     /*****************
@@ -216,6 +243,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->previous, sizeof(block->previous),
                        json_previous->valuestring,
                        HEX_256, NULL, NULL, NULL);
+        n_parse++;
     }
 
     /************************
@@ -257,6 +285,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     else if(block->type == OPEN || block->type == RECEIVE){
         json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "source");
     }
+
     if ( cJSON_IsString(json_link) && (json_link->valuestring != NULL) ){
         sodium_hex2bin(block->link, sizeof(block->link),
                        json_link->valuestring,
@@ -280,9 +309,17 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
         ESP_LOGI(TAG, "get_block: Work: %s", json_work->valuestring);
-        // todo: error handle nl_parse_server_work_string
-        block->work = nl_parse_server_work_string(json_work->valuestring);
-        n_parse++;
+        if(strlen(json_work->valuestring) == 16) {
+            outcome = nl_parse_server_work_string(json_work->valuestring, &(block->work));
+            if( E_SUCCESS != outcome){
+                goto exit;
+            }
+            n_parse++;
+        }
+        else {
+            outcome = E_FAILURE;
+            goto exit;
+        }
     }
 
     /*****************
@@ -319,7 +356,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
 
     exit:
         cJSON_Delete(json);
-        return E_SUCCESS;
+        return outcome;
 }
 
 
@@ -365,11 +402,8 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     /* Account Address (convert bin to address) */
     char account_address[ADDRESS_BUF_LEN];
     nl_err_t res;
-    res = nl_public_to_address(account_address, sizeof(account_address),
-                               block->account);
-    if( E_SUCCESS != res ){
-        return res;
-    }
+    nl_public_to_address(account_address, sizeof(account_address),
+            block->account);
     strlower(account_address);
     ESP_LOGI(TAG, "process_block: Address: %s", account_address);
     
@@ -382,8 +416,7 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     /* Representative (convert bin to address) */
     char representative_address[ADDRESS_BUF_LEN];
     res = nl_public_to_address(representative_address,
-                               sizeof(representative_address),
-                               block->representative);
+            sizeof(representative_address), block->representative);
     strlower(representative_address);
     ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
@@ -415,20 +448,18 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
    
     /* Combine into rai_node RPC command */
     int buf_req_len = snprintf( (char *) buf, buf_len,
-                         "{"
-                         "\"action\":\"process\","
-                         "\"block\":\""
-                         "{"
-                         "\\\"type\\\":\\\"state\\\","
-                         "\\\"account\\\":\\\"%s\\\","
-                         "\\\"previous\\\":\\\"%s\\\","
-                         "\\\"representative\\\":\\\"%s\\\","
-                         "\\\"balance\\\":\\\"%s\\\","
-                         "\\\"link\\\":\\\"%s\\\","
-                         "\\\"work\\\":\\\"%s\\\","
-                         "\\\"signature\\\":\\\"%s\\\""
-                         "}"
-                         "\"}",
+            "{"
+                "\"action\":\"process\","
+                "\"block\":\"{"
+                    "\\\"type\\\":\\\"state\\\","
+                    "\\\"account\\\":\\\"%s\\\","
+                    "\\\"previous\\\":\\\"%s\\\","
+                    "\\\"representative\\\":\\\"%s\\\","
+                    "\\\"balance\\\":\\\"%s\\\","
+                    "\\\"link\\\":\\\"%s\\\","
+                    "\\\"work\\\":\\\"%s\\\","
+                    "\\\"signature\\\":\\\"%s\\\""
+            "}\"}",
             account_address, previous_hex, representative_address, balance_buf,
             link_hex, work, signature_hex);
 

@@ -20,6 +20,9 @@
 
 #include "nano_lib.h"
 
+/* Saftey Note: It is the user's responsibility that all json_data strings
+ * are properly null-terminated */
+
 uint32_t nanoparse_block_count(const char *json_data);
 uint32_t nanoparse_lws_block_count();
 nl_err_t nanoparse_work( const char *json_data, uint64_t *work);
