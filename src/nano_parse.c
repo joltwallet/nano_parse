@@ -39,12 +39,13 @@ static char* deblank( char* input ) {
 
     int i,j;
     char *output=input;
-    for (i = 0, j = 0; i<strlen(input); i++,j++)
-    {
-        if (input[i]!=' ')
+    for (i = 0, j = 0; i<strlen(input); i++,j++) {
+        if (input[i]!=' ' && input[i]!='\t') {
             output[j]=input[i];
-        else
+        }
+        else {
             j--;
+        }
     }
     output[j]=0;
     return output;
@@ -164,32 +165,43 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     }
 
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
-    if(!json_contents){
-        json_contents = json;
-    }
-    char *string = cJSON_Print(json_contents);
-    
-    ESP_LOGI(TAG, "get_block: contents:\n %s", string);
-   
-    // remove newlines
-    char* new_string = replace(string, "\\n", " ");
-    if( NULL == new_string ) {
-        outcome = E_FAILURE;
-        goto exit;
-    }
+    cJSON *nested_json;
+    if(json_contents){
+        char *string = cJSON_Print(json_contents);
+        
+        ESP_LOGI(TAG, "get_block: contents:\n %s", string);
+       
+        // remove double escaped newlines
+        char* new_string = replace(string, "\\n", " ");
+        if( NULL == new_string ) {
+            outcome = E_FAILURE;
+            goto exit;
+        }
 
-    for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
-        *p = ' ';
-    }
+        // remove all double escaped slashes
+        for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
+            *p = ' ';
+        }
 
-    ESP_LOGI(TAG, "get_block: replaced:\n %s", string);
-    
-    char * new_string_nws = deblank(new_string);
-    
-    new_string_nws[0] = ' ';
-    new_string_nws[strlen(new_string_nws)-1] = ' ';
-    
-    cJSON *nested_json = cJSON_Parse(new_string_nws);
+        // remove all newlines
+        for (char* p = new_string; (p = strchr(p, '\n')); ++p) {
+            *p = ' ';
+        }
+
+        ESP_LOGI(TAG, "get_block: replaced:\n %s", string);
+        
+        char * new_string_nws = deblank(new_string);
+
+        ESP_LOGI(TAG, "get_block: deblanked:\n %s", string);
+        
+        new_string_nws[0] = ' ';
+        new_string_nws[strlen(new_string_nws)-1] = ' ';
+        
+        nested_json = cJSON_Parse(new_string_nws);
+    }
+    else{
+        nested_json = json;
+    }
 
     /********************
      * Parse Block Type *
