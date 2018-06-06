@@ -157,15 +157,22 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     const cJSON *json_signature = NULL;
     
     cJSON *json = cJSON_Parse((char *)json_data);
+    if(!json){
+        outcome = E_FAILURE;
+        ESP_LOGI(TAG, "get_block: failed to parse json data.");
+        goto exit;
+    }
+
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
     if(!json_contents){
         json_contents = json;
     }
     char *string = cJSON_Print(json_contents);
     
-    ESP_LOGI(TAG, "get_block: %s", string);
-    
-    char* new_string = replace(string, "\\n", "\\");
+    ESP_LOGI(TAG, "get_block: contents:\n %s", string);
+   
+    // remove newlines
+    char* new_string = replace(string, "\\n", " ");
     if( NULL == new_string ) {
         outcome = E_FAILURE;
         goto exit;
@@ -174,6 +181,8 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
         *p = ' ';
     }
+
+    ESP_LOGI(TAG, "get_block: replaced:\n %s", string);
     
     char * new_string_nws = deblank(new_string);
     
@@ -210,6 +219,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             expected_n_parse = 5;
         }
         else{
+            ESP_LOGI(TAG, "get_block: 'type' field not recognized ");
             outcome = E_FAILURE;
             goto exit;
         }
@@ -218,6 +228,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
     }
     else {
+        ESP_LOGI(TAG, "get_block: Unable to find key 'type' ");
         outcome = E_FAILURE;
         goto exit;
     }
