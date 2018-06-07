@@ -34,20 +34,20 @@
 static const char TAG[] = "nano_parse";
 
 
-static char* deblank( char* input ) {
+static char* deblank( char* str ) {
     /* Replaces all spaces from input string */
 
-    int i,j;
-    char *output=input;
-    for (i = 0, j = 0; i<strlen(input); i++,j++)
-    {
-        if (input[i]!=' ')
-            output[j]=input[i];
-        else
+    int i, j;
+    for (i = 0, j = 0; i<strlen(str); i++,j++) {
+        if (str[i]!=' ' && str[i]!='\t') {
+            str[j]=str[i];
+        }
+        else {
             j--;
+        }
     }
-    output[j]=0;
-    return output;
+    str[j]=0;
+    return str;
 }
 
 static char* replace(char* str, char* a, char* b) {
@@ -155,32 +155,46 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     const cJSON *json_balance = NULL;
     const cJSON *json_work = NULL;
     const cJSON *json_signature = NULL;
+    cJSON *nested_json = NULL;
+    char *content_string = NULL;
     
     cJSON *json = cJSON_Parse((char *)json_data);
-    json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
-    if(!json_contents){
-        json_contents = json;
-    }
-    char *string = cJSON_Print(json_contents);
-    
-    ESP_LOGI(TAG, "get_block: %s", string);
-    
-    char* new_string = replace(string, "\\n", "\\");
-    if( NULL == new_string ) {
+    if(!json){
         outcome = E_FAILURE;
+        ESP_LOGI(TAG, "get_block: failed to parse json data.");
         goto exit;
     }
 
-    for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
-        *p = ' ';
+    json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
+    if(json_contents){
+        content_string = cJSON_Print(json_contents);
+        
+        // remove double escaped newlines
+        replace(content_string, "\\n", " ");
+        if( NULL == content_string ) {
+            outcome = E_FAILURE;
+            goto exit;
+        }
+
+        // remove all double escaped slashes
+        for (char* p = content_string; (p = strchr(p, '\\')); ++p) {
+            *p = ' ';
+        }
+        
+        // Remove Whitespace
+        deblank(content_string);
+
+        // Remove starting and end quotes
+        content_string[0] = ' ';
+        content_string[strlen(content_string)-1] = ' ';
+
+        ESP_LOGI(TAG, "get_block: deblanked:\n %s", content_string);
+        
+        nested_json = cJSON_Parse(content_string);
     }
-    
-    char * new_string_nws = deblank(new_string);
-    
-    new_string_nws[0] = ' ';
-    new_string_nws[strlen(new_string_nws)-1] = ' ';
-    
-    cJSON *nested_json = cJSON_Parse(new_string_nws);
+    else{
+        nested_json = json;
+    }
 
     /********************
      * Parse Block Type *
@@ -210,6 +224,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             expected_n_parse = 5;
         }
         else{
+            ESP_LOGI(TAG, "get_block: 'type' field not recognized ");
             outcome = E_FAILURE;
             goto exit;
         }
@@ -218,6 +233,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
     }
     else {
+        ESP_LOGI(TAG, "get_block: Unable to find key 'type' ");
         outcome = E_FAILURE;
         goto exit;
     }
@@ -339,7 +355,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
         }
         mbedtls_mpi_copy( &(block->balance), &current_balance);
-        mbedtls_mpi_free (&current_balance);
+        mbedtls_mpi_free( &current_balance );
         n_parse++;
     }
 
@@ -355,6 +371,10 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     }
 
     exit:
+        if( NULL != content_string ) {
+            free(content_string);
+            cJSON_Delete(nested_json);
+        }
         cJSON_Delete(json);
         return outcome;
 }
