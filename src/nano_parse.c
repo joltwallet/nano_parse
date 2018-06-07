@@ -34,21 +34,20 @@
 static const char TAG[] = "nano_parse";
 
 
-static char* deblank( char* input ) {
+static char* deblank( char* str ) {
     /* Replaces all spaces from input string */
 
-    int i,j;
-    char *output=input;
-    for (i = 0, j = 0; i<strlen(input); i++,j++) {
-        if (input[i]!=' ' && input[i]!='\t') {
-            output[j]=input[i];
+    int i, j;
+    for (i = 0, j = 0; i<strlen(str); i++,j++) {
+        if (str[i]!=' ' && str[i]!='\t') {
+            str[j]=str[i];
         }
         else {
             j--;
         }
     }
-    output[j]=0;
-    return output;
+    str[j]=0;
+    return str;
 }
 
 static char* replace(char* str, char* a, char* b) {
@@ -156,6 +155,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     const cJSON *json_balance = NULL;
     const cJSON *json_work = NULL;
     const cJSON *json_signature = NULL;
+    char *content_string = NULL;
     
     cJSON *json = cJSON_Parse((char *)json_data);
     if(!json){
@@ -167,37 +167,30 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
     cJSON *nested_json;
     if(json_contents){
-        char *string = cJSON_Print(json_contents);
+        content_string = cJSON_Print(json_contents);
         
-        ESP_LOGI(TAG, "get_block: contents:\n %s", string);
-       
         // remove double escaped newlines
-        char* new_string = replace(string, "\\n", " ");
-        if( NULL == new_string ) {
+        replace(content_string, "\\n", " ");
+        if( NULL == content_string ) {
             outcome = E_FAILURE;
             goto exit;
         }
 
         // remove all double escaped slashes
-        for (char* p = new_string; (p = strchr(p, '\\')); ++p) {
+        for (char* p = content_string; (p = strchr(p, '\\')); ++p) {
             *p = ' ';
         }
-
-        // remove all newlines
-        for (char* p = new_string; (p = strchr(p, '\n')); ++p) {
-            *p = ' ';
-        }
-
-        ESP_LOGI(TAG, "get_block: replaced:\n %s", string);
         
-        char * new_string_nws = deblank(new_string);
+        // Remove Whitespace
+        deblank(content_string);
 
-        ESP_LOGI(TAG, "get_block: deblanked:\n %s", string);
+        // Remove starting and end quotes
+        content_string[0] = ' ';
+        content_string[strlen(content_string)-1] = ' ';
+
+        ESP_LOGI(TAG, "get_block: deblanked:\n %s", content_string);
         
-        new_string_nws[0] = ' ';
-        new_string_nws[strlen(new_string_nws)-1] = ' ';
-        
-        nested_json = cJSON_Parse(new_string_nws);
+        nested_json = cJSON_Parse(content_string);
     }
     else{
         nested_json = json;
@@ -378,6 +371,9 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     }
 
     exit:
+        if( NULL != content_string ) {
+            free(content_string);
+        }
         cJSON_Delete(json);
         return outcome;
 }
