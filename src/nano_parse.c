@@ -205,23 +205,23 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
 
         if (strcmp(json_type->valuestring, "state") == 0){
             block->type = STATE;
-            expected_n_parse = 8;
+            expected_n_parse = 6;
         }
         else if (strcmp(json_type->valuestring, "send") == 0){
             block->type = SEND;
-            expected_n_parse = 6;
+            expected_n_parse = 4;
         }
         else if (strcmp(json_type->valuestring, "receive") == 0){
             block->type = RECEIVE;
-            expected_n_parse = 5;
+            expected_n_parse = 3;
         }
         else if (strcmp(json_type->valuestring, "open") == 0){
             block->type = OPEN;
-            expected_n_parse = 6;
+            expected_n_parse = 4;
         }
         else if (strcmp(json_type->valuestring, "change") == 0){
             block->type = CHANGE;
-            expected_n_parse = 5;
+            expected_n_parse = 3;
         }
         else{
             ESP_LOGI(TAG, "get_block: 'type' field not recognized ");
@@ -284,7 +284,6 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->signature, sizeof(block->signature),
                        json_signature->valuestring,
                        HEX_512, NULL, NULL, NULL);
-        n_parse++;
     }
     
     /**************
@@ -330,7 +329,6 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             if( E_SUCCESS != outcome){
                 goto exit;
             }
-            n_parse++;
         }
         else {
             outcome = E_FAILURE;
@@ -366,6 +364,8 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         outcome = E_SUCCESS;
     }
     else{
+        ESP_LOGI(TAG, "Parsed %d mandatory fields; expected to parse %d",
+                n_parse, expected_n_parse);
         outcome = E_FAILURE;
         goto exit;
     }
