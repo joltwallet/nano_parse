@@ -155,6 +155,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     const cJSON *json_balance = NULL;
     const cJSON *json_work = NULL;
     const cJSON *json_signature = NULL;
+    cJSON *nested_json = NULL;
     char *content_string = NULL;
     
     cJSON *json = cJSON_Parse((char *)json_data);
@@ -165,7 +166,6 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     }
 
     json_contents = cJSON_GetObjectItemCaseSensitive(json, "contents");
-    cJSON *nested_json;
     if(json_contents){
         content_string = cJSON_Print(json_contents);
         
@@ -355,7 +355,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             mbedtls_mpi_read_string(&current_balance, 10, json_balance->valuestring);
         }
         mbedtls_mpi_copy( &(block->balance), &current_balance);
-        mbedtls_mpi_free (&current_balance);
+        mbedtls_mpi_free( &current_balance );
         n_parse++;
     }
 
@@ -373,6 +373,7 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     exit:
         if( NULL != content_string ) {
             free(content_string);
+            cJSON_Delete(nested_json);
         }
         cJSON_Delete(json);
         return outcome;
