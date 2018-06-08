@@ -60,7 +60,7 @@ static char* replace(char* str, char* a, char* b) {
     for (char* p = str; (p = strstr(p, a)); ++p) {
         if (lena != lenb) { // shift end as needed
             memmove(p+lenb, p+lena,
-                    len - (p - str) + lenb);
+                    len - (p - str) - lena);
         }
         memcpy(p, b, lenb);
     }

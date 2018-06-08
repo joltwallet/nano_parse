@@ -28,6 +28,9 @@
 #include "nano_lib.h"
 #include "nano_parse.h"
 
+#include "esp_err.h"
+#include "esp_heap_caps.h"
+
 #define TEST_TAG "[nanoparse]"
 static const char *TAG = "[nanoparse]";
 
@@ -99,6 +102,8 @@ TEST_CASE("Parse Open Block (rai_node response)", TEST_TAG){
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
 
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
+
     nl_block_free( &gt );
     nl_block_free( &pred );
 }
@@ -132,6 +137,8 @@ TEST_CASE("Parse Send Block (rai_node response)", TEST_TAG){
 
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
+
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
 
     nl_block_free( &gt );
     nl_block_free( &pred );
@@ -169,6 +176,8 @@ TEST_CASE("Parse Receive Block (rai_node response)", TEST_TAG){
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
 
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
+
     nl_block_free( &gt );
     nl_block_free( &pred );
 }
@@ -202,6 +211,8 @@ TEST_CASE("Parse Change Block (rai_node response)", TEST_TAG){
 
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
+
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
 
     nl_block_free( &gt );
     nl_block_free( &pred );
@@ -239,6 +250,8 @@ TEST_CASE("Parse State Block (rai_node response)", TEST_TAG){
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
 
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
+
     nl_block_free( &gt );
     nl_block_free( &pred );
 }
@@ -274,6 +287,8 @@ TEST_CASE("Parse State Block (json string)", TEST_TAG){
 
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_TRUE(nl_block_equal(&(gt), &(pred)));
+
+    ESP_ERROR_CHECK( !heap_caps_check_integrity_all(0) );
 
     nl_block_free( &gt );
     nl_block_free( &pred );
