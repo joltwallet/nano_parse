@@ -39,7 +39,7 @@ nl_err_t nanoparse_lws_work(const hex256_t hash, uint64_t *work){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
    
-    //strupper(hash);
+    strupr(hash);
     snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
     network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
 
@@ -50,7 +50,7 @@ nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t fr
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
     
-    //strlower(account_address);
+    strlwr(account_address);
     snprintf( (char *) rpc_command, sizeof(rpc_command),
             "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
             account_address);
