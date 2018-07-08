@@ -11,6 +11,7 @@
 #include "cJSON.h"
 
 #include "nano_lib.h"
+#include "jolttypes.h"
 #include "nano_parse.h"
 
 #if CONFIG_NANOPARSE_BUILD_W_LWS
@@ -35,22 +36,23 @@ uint32_t nanoparse_lws_block_count(){
     return nanoparse_block_count(rx_string);
 }
 
-nl_err_t nanoparse_lws_work(const hex256_t hash, uint64_t *work){
+jolt_err_t nanoparse_lws_work(const hex256_t hash, uint64_t *work){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
    
-    strupr(hash);
-    snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash );
+    hex256_t hash_upper;
+    strlcpy(hash_upper, hash, sizeof(hash_upper));
+    strupr(hash_upper);
+    snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash_upper );
     network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
 
     return nanoparse_work(rx_string, work);
 }
 
-nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t frontier_block_hash){
+jolt_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t frontier_block_hash){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
     
-    strlwr(account_address);
     snprintf( (char *) rpc_command, sizeof(rpc_command),
             "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
             account_address);
@@ -59,7 +61,7 @@ nl_err_t nanoparse_lws_account_frontier(const char *account_address, hex256_t fr
     return nanoparse_account_frontier(rx_string, frontier_block_hash);
 }
 
-nl_err_t nanoparse_lws_block(const hex256_t block_hash, nl_block_t *block){
+jolt_err_t nanoparse_lws_block(const hex256_t block_hash, nl_block_t *block){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
 
@@ -71,7 +73,7 @@ nl_err_t nanoparse_lws_block(const hex256_t block_hash, nl_block_t *block){
     return nanoparse_block(rx_string, block);
 }
 
-nl_err_t nanoparse_lws_pending_hash( const char *account_address,
+jolt_err_t nanoparse_lws_pending_hash( const char *account_address,
         hex256_t pending_block_hash, mbedtls_mpi *amount){
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     char rx_string[NANOPARSE_RX_BUF_LEN];
@@ -87,7 +89,7 @@ nl_err_t nanoparse_lws_pending_hash( const char *account_address,
     return nanoparse_pending_hash(rx_string, pending_block_hash, amount);
 }
 
-nl_err_t nanoparse_lws_frontier_block(nl_block_t *block){
+jolt_err_t nanoparse_lws_frontier_block(nl_block_t *block){
     /* Convenience function to get frontier hash and block contents.
      * Fills in block's field according to account in block->account.
      *
@@ -100,13 +102,12 @@ nl_err_t nanoparse_lws_frontier_block(nl_block_t *block){
     char address[ADDRESS_BUF_LEN];
    
     // Convert public key to an address
-    nl_err_t res;
+    jolt_err_t res;
     res = nl_public_to_address(address, sizeof(address), block->account);
     if( E_SUCCESS != res ){
         return res;
     }
 
-    strupper(address);
     ESP_LOGI(TAG, "frontier_block: Address: %s\n", address);
     
     /* Get latest block from server */
@@ -122,8 +123,8 @@ nl_err_t nanoparse_lws_frontier_block(nl_block_t *block){
     return nanoparse_lws_block(frontier_block_hash, block);
 }
 
-nl_err_t nanoparse_lws_process(nl_block_t *block){
-    nl_err_t res;
+jolt_err_t nanoparse_lws_process(nl_block_t *block){
+    jolt_err_t res;
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
     unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
 
