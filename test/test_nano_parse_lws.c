@@ -15,6 +15,7 @@
 #include "esp_log.h"
 
 #include "nano_lib.h"
+#include "jolttypes.h"
 #include "nano_parse.h"
 
 #define TEST_TAG "[nanoparse_lws]"
@@ -110,7 +111,7 @@ TEST_CASE("WiFi Account Frontier Hash", TEST_TAG){
 }
 
 TEST_CASE("WiFi Account Frontier Block", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
 
     /* Setup Test Vector */
     nl_block_t gt;

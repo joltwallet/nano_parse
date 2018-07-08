@@ -14,6 +14,7 @@
 #include "mbedtls/bignum.h"
 
 #include "nano_lib.h"
+#include "jolttypes.h"
 #include "nano_parse.h"
 
 #include "esp_err.h"
@@ -32,7 +33,7 @@ TEST_CASE("Block Count (rai_node response)", TEST_TAG){
 TEST_CASE("Work", TEST_TAG){
     const char *json_data = "{\n    \"work\": \"bf0dc663d15668b6\"\n}\n";
     uint64_t work;
-    nl_err_t err;
+    jolt_err_t err;
     err = nanoparse_work( json_data, &work);
     TEST_ASSERT_EQUAL(E_SUCCESS, err);
     TEST_ASSERT_EQUAL_UINT(3512101046, work);
@@ -41,7 +42,7 @@ TEST_CASE("Work", TEST_TAG){
 TEST_CASE("Account Frontier Hash", TEST_TAG){
     const char *json_data_1 = "{\n    \"frontiers\": {\n        \"xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb\": \"33832030C4F99FD37C8CD8399911D47150FCB90AE3A791970DBC8D05DFF93B8B\"\n    }\n}\n";
     hex256_t hash;
-    nl_err_t err;
+    jolt_err_t err;
     err = nanoparse_account_frontier(json_data_1, hash);
     TEST_ASSERT_EQUAL(E_SUCCESS, err);
     TEST_ASSERT_EQUAL_STRING(
@@ -58,7 +59,7 @@ TEST_CASE("Account Frontier Hash", TEST_TAG){
 }
 
 TEST_CASE("Parse Open Block (rai_node response)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"open\\\",\\n    \\\"source\\\": \\\"32E0D2FE367522FBFA29EB93940EC3AE5E1315DD9C6A73B3DE2A8BC683B64367\\\",\\n    \\\"representative\\\": \\\"xrb_3hd4ezdgsp15iemx7h81in7xz5tpxi43b6b41zn3qmwiuypankocw3awes5k\\\",\\n    \\\"account\\\": \\\"xrb_3dmtrrws3pocycmbqwawk6xs7446qxa36fcncush4s1pejk16ksbmakis78m\\\",\\n    \\\"work\\\": \\\"21bcc2816e10165d\\\",\\n    \\\"signature\\\": \\\"2CA07C59BF80B04515D49480EF0B5918BA29F998AB84120BB4B33A1A49BC028F0DB86CED729BF17B2CFF64F92011DC7F0089CDBF283C392F242A9F42DFA66000\\\"\\n}\\n\"\n}\n";
 
     // Setup Test Vector
@@ -97,7 +98,7 @@ TEST_CASE("Parse Open Block (rai_node response)", TEST_TAG){
 }
 
 TEST_CASE("Parse Send Block (rai_node response)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"send\\\",\\n    \\\"previous\\\": \\\"66B2E0C0D2971A6372184FC851C959D4A2993749C78BA845D707873FB2C2EFDA\\\",\\n    \\\"destination\\\": \\\"xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr\\\",\\n    \\\"balance\\\": \\\"0000000694140DC0A578AED10D000000\\\",\\n    \\\"work\\\": \\\"595ebaa13f83c1b2\\\",\\n    \\\"signature\\\": \\\"E523F20CAC1FF563F697C1D58E60FF0D72A9AC7B499799785490648E3F154FE4F464F6D7ECC4CD1A8072827E88F3D5805A8370F4A6DE06EDA8939E70E5113803\\\"\\n}\\n\"\n}\n";
 
     // Setup Test Vector
@@ -133,7 +134,7 @@ TEST_CASE("Parse Send Block (rai_node response)", TEST_TAG){
 }
 
 TEST_CASE("Parse Receive Block (rai_node response)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"receive\\\",\\n    \\\"previous\\\": \\\"755F515E56D7AE5467D454C61304320CA7363449580DE3B40B0F51C816C9A8F9\\\",\\n    \\\"source\\\": \\\"58C5B5344D85AAAEF1E7980B25E93DFB4834B6185EAD9A546D43F400370E1188\\\",\\n    \\\"work\\\": \\\"0c6589b8125613d8\\\",\\n    \\\"signature\\\": \\\"14EF1B6FA1CCD0B56EC2D8213A0708701BA322C3C3CB592D5C85D005CD3D51F24F4EE5954FE3C1EB5839004B7541E742AA1F7870FD81220A02319B96105D2D04\\\"\\n}\\n\"\n}\n";
 
     // Setup Test Vector
@@ -171,7 +172,7 @@ TEST_CASE("Parse Receive Block (rai_node response)", TEST_TAG){
 }
 
 TEST_CASE("Parse Change Block (rai_node response)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"change\\\",\\n    \\\"previous\\\": \\\"AF9C1D46AAE66CC8F827904ED02D4B3D95AA98B1FF058352BA6B670BEFD40231\\\",\\n    \\\"representative\\\": \\\"xrb_1cwswatjifmjnmtu5toepkwca64m7qtuukizyjxsghujtpdr9466wjmn89d8\\\",\\n    \\\"work\\\": \\\"e8c2c556c9cfb6e2\\\",\\n    \\\"signature\\\": \\\"A039A7BF5E54B44F45A8E1AD9940A81C87CC66C04AFA738367956629A5EF49E49D297FA3CDD195BDA8373D144F9E1D4641737E7F372CEAB5AD2F3B8E9852A30D\\\"\\n}\\n\"\n}\n";
 
     // Setup Test Vector
@@ -207,7 +208,7 @@ TEST_CASE("Parse Change Block (rai_node response)", TEST_TAG){
 }
 
 TEST_CASE("Parse State Block (rai_node response)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"state\\\",\\n    \\\"account\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"previous\\\": \\\"6736060E4780522B1B89F5FFBE337CF5854171A06438E4929E4FEFC9211DA655\\\",\\n    \\\"representative\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"balance\\\": \\\"0\\\",\\n    \\\"link\\\": \\\"5FE86B2A2FD984AFA56C6095F24B1BB9329B3FC6F3FB0E0E78A74DE9A3EBB056\\\",\\n    \\\"link_as_account\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"signature\\\": \\\"A8702746CFE1F43F0C9AC427381A06F279B578F175FFB3111394AAFB8846DB8E9310976956AC1A2156BF75A462A195DD5574AD35975F262377573B46E2B62904\\\",\\n    \\\"work\\\": \\\"6aa2c8a6e053c0d4\\\"\\n}\\n\"\n}\n";
 
     // Setup Test Vector
@@ -245,7 +246,7 @@ TEST_CASE("Parse State Block (rai_node response)", TEST_TAG){
 }
 
 TEST_CASE("Parse State Block (json string)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"type\": \"state\",\n    \"account\": \"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\",\n    \"previous\": \"6736060E4780522B1B89F5FFBE337CF5854171A06438E4929E4FEFC9211DA655\",\n    \"representative\": \"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\",\n    \"balance\": \"0\",\n    \"link\": \"5FE86B2A2FD984AFA56C6095F24B1BB9329B3FC6F3FB0E0E78A74DE9A3EBB056\",\n    \"link_as_account\": \"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\",\n    \"signature\": \"A8702746CFE1F43F0C9AC427381A06F279B578F175FFB3111394AAFB8846DB8E9310976956AC1A2156BF75A462A195DD5574AD35975F262377573B46E2B62904\",\n    \"work\": \"6aa2c8a6e053c0d4\"\n}\n";
 
     // Setup Test Vector
@@ -283,7 +284,7 @@ TEST_CASE("Parse State Block (json string)", TEST_TAG){
 }
 
 TEST_CASE("Parse Malformed (no work)", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     const char *json_data = "{\n    \"contents\": \"{\\n    \\\"type\\\": \\\"state\\\",\\n    \\\"account\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"previous\\\": \\\"6736060E4780522B1B89F5FFBE337CF5854171A06438E4929E4FEFC9211DA655\\\",\\n    \\\"representative\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"balance\\\": \\\"0\\\",\\n    \\\"link\\\": \\\"5FE86B2A2FD984AFA56C6095F24B1BB9329B3FC6F3FB0E0E78A74DE9A3EBB056\\\",\\n    \\\"link_as_account\\\": \\\"xrb_1qzafeo4zpe6oykprr6oyb7jqgbkmezwfwzu3r99jbtfx8jyqe4p14h4d7pb\\\",\\n    \\\"signature\\\": \\\"A8702746CFE1F43F0C9AC427381A06F279B578F175FFB3111394AAFB8846DB8E9310976956AC1A2156BF75A462A195DD5574AD35975F262377573B46E2B62904\\\",\\n \\n}\\n\"\n}\n";
 
     // Test Parser
@@ -297,7 +298,7 @@ TEST_CASE("Parse Malformed (no work)", TEST_TAG){
 }
 
 TEST_CASE("Pending Hash and Amount", TEST_TAG){
-    nl_err_t res;
+    jolt_err_t res;
     hex256_t pending_hash;
     mbedtls_mpi amount;
     mbedtls_mpi_init( &amount );

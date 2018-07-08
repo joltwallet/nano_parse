@@ -11,6 +11,7 @@
 #include "cJSON.h"
 
 #include "nano_lib.h"
+#include "jolttypes.h"
 #include "nano_parse.h"
 
 #if CONFIG_NANOPARSE_BUILD_W_LWS
@@ -76,10 +77,10 @@ uint32_t nanoparse_block_count( const char *json_data ){
     return count_int;
 }
 
-nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
+jolt_err_t nanoparse_work( const char *json_data, uint64_t *work){
     /* Parses rai_node rpc response for "work_generate"
      * Returns uint64_t work */
-    nl_err_t outcome;
+    jolt_err_t outcome;
     const cJSON *json_work = NULL;
     cJSON *json = cJSON_Parse(json_data);
     
@@ -102,11 +103,11 @@ nl_err_t nanoparse_work( const char *json_data, uint64_t *work){
         return outcome;
 }
 
-nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_block_hash){
+jolt_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_block_hash){
     /* Returns the hash (33 characters) of the head block of the account */
     const cJSON *frontiers = NULL;
     const cJSON *account = NULL;
-    nl_err_t outcome = E_FAILURE;
+    jolt_err_t outcome = E_FAILURE;
     
     cJSON *json = cJSON_Parse((char *)json_data);
     frontiers = cJSON_GetObjectItemCaseSensitive(json, "frontiers");
@@ -129,11 +130,11 @@ nl_err_t nanoparse_account_frontier(const char *json_data, hex256_t frontier_blo
     return outcome;
 }
 
-nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
+jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     /* Parses rai_node rpc response to "block".
      * Returns populated block */
     uint8_t n_parse = 0, expected_n_parse;
-    nl_err_t outcome; // return value
+    jolt_err_t outcome; // return value
     const cJSON *json_contents = NULL;
     const cJSON *json_type = NULL;
     const cJSON *json_previous = NULL;
@@ -368,9 +369,9 @@ nl_err_t nanoparse_block(const char *json_data, nl_block_t *block){
 }
 
 
-nl_err_t nanoparse_pending_hash( const char *json_data,
+jolt_err_t nanoparse_pending_hash( const char *json_data,
         hex256_t pending_block_hash, mbedtls_mpi *amount){
-    nl_err_t outcome = E_FAILURE;
+    jolt_err_t outcome = E_FAILURE;
     const cJSON *blocks = NULL;
     const cJSON *account = NULL;
     
@@ -405,14 +406,14 @@ nl_err_t nanoparse_pending_hash( const char *json_data,
     return outcome;
 }
 
-nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
+jolt_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
 
     /* Account Address (convert bin to address) */
     char account_address[ADDRESS_BUF_LEN];
-    nl_err_t res;
-    nl_public_to_address(account_address, sizeof(account_address),
+    jolt_err_t res;
+    res = nl_public_to_address(account_address, sizeof(account_address),
             block->account);
-    strlower(account_address);
+    strlwr(account_address);
     ESP_LOGI(TAG, "process_block: Address: %s", account_address);
     
     /* Previous (convert bin to hex) */
@@ -425,7 +426,7 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     char representative_address[ADDRESS_BUF_LEN];
     res = nl_public_to_address(representative_address,
             sizeof(representative_address), block->representative);
-    strlower(representative_address);
+    strlwr(representative_address);
     ESP_LOGI(TAG, "process_block: Representative: %s", representative_address);
     
     /* Balance (convert mpi to string) */
@@ -439,7 +440,7 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     hex256_t link_hex;
     sodium_bin2hex(link_hex, sizeof(link_hex),
                    block->link, sizeof(block->link));
-    strupper(link_hex);
+    strupr(link_hex);
     ESP_LOGI(TAG, "process_block: Link: %s", link_hex);
     
     /* Work (keep as hex; byteswap) */
@@ -451,7 +452,7 @@ nl_err_t nanoparse_process(const nl_block_t *block, char *buf, size_t buf_len){
     hex512_t signature_hex;
     sodium_bin2hex(signature_hex, sizeof(signature_hex),
                    block->signature, sizeof(block->signature));
-    strupper(signature_hex);
+    strupr(signature_hex);
     ESP_LOGI(TAG, "Block->signature: %s", signature_hex);
    
     /* Combine into rai_node RPC command */
