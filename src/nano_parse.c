@@ -25,11 +25,9 @@
 #include "nano_lib.h"
 #include "nano_parse.h"
 
-#if CONFIG_NANOPARSE_BUILD_W_LWS
-#include "nano_lws.h"
+#include "nano_rest.h"
 #define NANOPARSE_CMD_BUF_LEN 1024
 #define NANOPARSE_RX_BUF_LEN 1024
-#endif
 
 static const char TAG[] = "nano_parse";
 
