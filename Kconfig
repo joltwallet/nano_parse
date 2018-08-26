@@ -3,7 +3,14 @@ menu "nano_parse"
     config NANOPARSE_BUILD_W_LWS
         bool
         prompt "Build with LWS helpers"
-        default true
+        default false
+        help
+            help text
+
+    config NANOPARSE_BUILD_W_REST
+        bool
+        prompt "Build with REST helpers"
+        default y
         help
             help text
 

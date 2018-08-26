@@ -5,7 +5,7 @@
 
 #include "unity.h"
 
-#if CONFIG_NANOPARSE_BUILD_W_LWS
+#if CONFIG_NANOPARSE_BUILD_W_LWS || CONFIG_NANOPARSE_BUILD_W_REST
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,14 +95,14 @@ TEST_CASE("WiFi Setup (debug util)", TEST_TAG){
 
 TEST_CASE("WiFi Block Count", TEST_TAG){
     wifi_setup();
-    uint32_t count = nanoparse_lws_block_count();
+    uint32_t count = nanoparse_web_block_count();
     printf("Server Block Count: %d", count);
     TEST_ASSERT_MESSAGE(0 < count, "Block Count Zero");
 }
 
 TEST_CASE("WiFi Account Frontier Hash", TEST_TAG){
     hex256_t block_hash;
-    nanoparse_lws_account_frontier(
+    nanoparse_web_account_frontier(
             "xrb_3tw77cfpwfnkqrjb988sh91tzerwu5dfnzxy8b3u76r7a7xwnkawm37ctcsb",
             block_hash);
     TEST_ASSERT_EQUAL_STRING(
@@ -140,7 +140,7 @@ TEST_CASE("WiFi Account Frontier Block", TEST_TAG){
     nl_block_init( &pred );
     nl_address_to_public(pred.account, "xrb_3h94iuxwu48uzokokwa991a3okkwypiugsb5a1ehzwfw33dxrsuu154iw5qr");
 
-    res =  nanoparse_lws_frontier_block(&pred);
+    res =  nanoparse_web_frontier_block(&pred);
     TEST_ASSERT_EQUAL(E_SUCCESS, res);
     TEST_ASSERT_EQUAL_MEMORY(&gt, &pred, sizeof(nl_block_t) - sizeof(mbedtls_mpi));
     TEST_ASSERT_EQUAL(0, mbedtls_mpi_cmp_mpi(&(gt.balance), &(pred.balance)));
