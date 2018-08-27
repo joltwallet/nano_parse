@@ -34,9 +34,7 @@ uint32_t nanoparse_web_block_count(){
     
     snprintf( (char *) rpc_command, sizeof(rpc_command),
             "{\"action\":\"block_count\"}" );
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string,
-            sizeof(rx_string));
-
+    network_get_data(rpc_command, rx_string, sizeof(rx_string));
     return nanoparse_block_count(rx_string);
 }
 
@@ -48,7 +46,7 @@ jolt_err_t nanoparse_web_work(const hex256_t hash, uint64_t *work){
     strlcpy(hash_upper, hash, sizeof(hash_upper));
     strupr(hash_upper);
     snprintf( (char *) rpc_command, sizeof(rpc_command), "{\"action\":\"work_generate\",\"hash\":\"%s\"}", hash_upper );
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+    network_get_data(rpc_command, rx_string, sizeof(rx_string));
 
     return nanoparse_work(rx_string, work);
 }
@@ -60,7 +58,7 @@ jolt_err_t nanoparse_web_account_frontier(const char *account_address, hex256_t 
     snprintf( (char *) rpc_command, sizeof(rpc_command),
             "{\"action\":\"accounts_frontiers\",\"accounts\":[\"%s\"]}",
             account_address);
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+    network_get_data(rpc_command, rx_string, sizeof(rx_string));
 
     return nanoparse_account_frontier(rx_string, frontier_block_hash);
 }
@@ -72,7 +70,7 @@ jolt_err_t nanoparse_web_block(const hex256_t block_hash, nl_block_t *block){
     snprintf( (char *) rpc_command, sizeof(rpc_command),
              "{\"action\":\"block\",\"hash\":\"%s\"}",
              block_hash);
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+    network_get_data(rpc_command, rx_string, sizeof(rx_string));
 
     return nanoparse_block(rx_string, block);
 }
@@ -88,7 +86,7 @@ jolt_err_t nanoparse_web_pending_hash( const char *account_address,
              "\"source\": \"true\","
              "\"accounts\":[\"%s\"]}",
              account_address);
-    network_get_data((unsigned char *)rpc_command, (unsigned char *)rx_string, sizeof(rx_string));
+    network_get_data(rpc_command, rx_string, sizeof(rx_string));
 
     return nanoparse_pending_hash(rx_string, pending_block_hash, amount);
 }
@@ -130,14 +128,13 @@ jolt_err_t nanoparse_web_frontier_block(nl_block_t *block){
 jolt_err_t nanoparse_web_process(nl_block_t *block){
     jolt_err_t res;
     char rpc_command[NANOPARSE_CMD_BUF_LEN];
-    unsigned char rx_string[NANOPARSE_RX_BUF_LEN];
+    char rx_string[NANOPARSE_RX_BUF_LEN];
 
     res = nanoparse_process(block, rpc_command, sizeof(rpc_command));
     if( E_SUCCESS != res ){
         return res;
     }
-    return network_get_data((unsigned char *)rpc_command,
-            (unsigned char *)rx_string, sizeof(rx_string));
+    return network_get_data(rpc_command, rx_string, sizeof(rx_string));
 }
 
 #endif

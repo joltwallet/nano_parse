@@ -70,6 +70,7 @@ uint32_t nanoparse_block_count( const char *json_data ){
         count_int = atoi(count->valuestring);
     }
     else{
+        ESP_LOGI(TAG, "unable to parse json");
         count_int = 0;
     }
     
