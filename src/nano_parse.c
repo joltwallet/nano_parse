@@ -148,6 +148,8 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     cJSON *nested_json = NULL;
     char *content_string = NULL;
     
+    ESP_LOGD(TAG, "Received json_data:\n%s\n", json_data);
+
     cJSON *json = cJSON_Parse((char *)json_data);
     if(!json){
         outcome = E_FAILURE;
