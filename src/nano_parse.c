@@ -2,6 +2,7 @@
  Copyright (C) 2018  Brian Pugh, James Coxon, Michael Smaili
  https://www.joltwallet.com/
  */
+//#define LOG_LOCAL_LEVEL 4
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -153,7 +154,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
     cJSON *json = cJSON_Parse((char *)json_data);
     if(!json){
         outcome = E_FAILURE;
-        ESP_LOGI(TAG, "get_block: failed to parse json data.");
+        ESP_LOGI(TAG, "nanoparse_block: failed to parse json data.");
         goto exit;
     }
 
@@ -180,7 +181,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         content_string[0] = ' ';
         content_string[strlen(content_string)-1] = ' ';
 
-        ESP_LOGI(TAG, "get_block: deblanked:\n %s", content_string);
+        ESP_LOGI(TAG, "nanoparse_block: deblanked:\n %s", content_string);
         
         nested_json = cJSON_Parse(content_string);
     }
@@ -193,7 +194,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      ********************/
     json_type = cJSON_GetObjectItemCaseSensitive(nested_json, "type");
     if (cJSON_IsString(json_type) && (json_type->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Type: %s", json_type->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Type: %s", json_type->valuestring);
 
         if (strcmp(json_type->valuestring, "state") == 0){
             block->type = STATE;
@@ -216,16 +217,17 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
             expected_n_parse = 3;
         }
         else{
-            ESP_LOGI(TAG, "get_block: 'type' field not recognized ");
+            ESP_LOGI(TAG, "nanoparse_block: 'type' field not recognized ");
             outcome = E_FAILURE;
             goto exit;
         }
         
         n_parse++;
-        ESP_LOGI(TAG, "get_block: block.type: %d", block->type);
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
+        ESP_LOGI(TAG, "nanoparse_block: block.type: %d", block->type);
     }
     else {
-        ESP_LOGI(TAG, "get_block: Unable to find key 'type' ");
+        ESP_LOGI(TAG, "nanoparse_block: Unable to find key 'type' ");
         outcome = E_FAILURE;
         goto exit;
     }
@@ -235,12 +237,14 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      *****************/
     json_account = cJSON_GetObjectItemCaseSensitive(nested_json, "account");
     if (cJSON_IsString(json_account) && (json_account->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Account: %s", json_account->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Account: %s", json_account->valuestring);
         outcome = nl_address_to_public(block->account, json_account->valuestring);
         if( E_SUCCESS != outcome){
+            ESP_LOGE(TAG, "Bad \"account\"");
             goto exit;
         }
         n_parse++;
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
     }
 
     /******************
@@ -251,7 +255,9 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->previous, sizeof(block->previous),
                        json_previous->valuestring,
                        HEX_256, NULL, NULL, NULL);
+        ESP_LOGI(TAG, "nanoparse_block: Previous: %s", json_previous->valuestring);
         n_parse++;
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
     }
 
     /************************
@@ -259,12 +265,14 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      ************************/
     json_representative = cJSON_GetObjectItemCaseSensitive(nested_json, "representative");
     if (cJSON_IsString(json_representative) && (json_representative->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Representative: %s", json_representative->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Representative: %s", json_representative->valuestring);
         outcome = nl_address_to_public(block->representative, json_representative->valuestring);
         if( E_SUCCESS != outcome){
+            ESP_LOGE(TAG, "Bad \"representative\"");
             goto exit;
         }
         n_parse++;
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
     }
 
     /*******************
@@ -272,7 +280,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      *******************/
     json_signature = cJSON_GetObjectItemCaseSensitive(nested_json, "signature");
     if (cJSON_IsString(json_signature) && (json_signature->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Signature: %s", json_signature->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Signature: %s", json_signature->valuestring);
         sodium_hex2bin(block->signature, sizeof(block->signature),
                        json_signature->valuestring,
                        HEX_512, NULL, NULL, NULL);
@@ -297,16 +305,20 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         sodium_hex2bin(block->link, sizeof(block->link),
                        json_link->valuestring,
                        HEX_256, NULL, NULL, NULL);
+        ESP_LOGI(TAG, "nanoparse_block: Link: %s", json_link->valuestring);
         n_parse++;
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
     }
     else if(block->type == SEND ){
         json_link = cJSON_GetObjectItemCaseSensitive(nested_json, "destination");
         if ( cJSON_IsString(json_link) && (json_link->valuestring != NULL) ){
             outcome = nl_address_to_public(block->link, json_link->valuestring);
             if( E_SUCCESS != outcome){
+                ESP_LOGE(TAG, "Bad \"destination\"");
                 goto exit;
             }
             n_parse++;
+            ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
         }
     }
 
@@ -315,14 +327,16 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      **************/
     json_work = cJSON_GetObjectItemCaseSensitive(nested_json, "work");
     if (cJSON_IsString(json_work) && (json_work->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Work: %s", json_work->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Work: %s", json_work->valuestring);
         if(strlen(json_work->valuestring) == 16) {
             outcome = nl_parse_server_work_string(json_work->valuestring, &(block->work));
             if( E_SUCCESS != outcome){
+                ESP_LOGE(TAG, "Bad \"work\"");
                 goto exit;
             }
         }
         else {
+            ESP_LOGE(TAG, "Bad \"work\"");
             outcome = E_FAILURE;
             goto exit;
         }
@@ -333,7 +347,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
      *****************/
     json_balance = cJSON_GetObjectItemCaseSensitive(nested_json, "balance");
     if (cJSON_IsString(json_balance) && (json_balance->valuestring != NULL)){
-        ESP_LOGI(TAG, "get_block: Balance: %s\n", json_balance->valuestring);
+        ESP_LOGI(TAG, "nanoparse_block: Balance: %s\n", json_balance->valuestring);
         
         mbedtls_mpi current_balance;
         mbedtls_mpi_init(&current_balance);
@@ -347,6 +361,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         mbedtls_mpi_copy( &(block->balance), &current_balance);
         mbedtls_mpi_free( &current_balance );
         n_parse++;
+        ESP_LOGD(TAG, "n_parse incremented: %d", n_parse);
     }
 
     /***********************
@@ -356,7 +371,7 @@ jolt_err_t nanoparse_block(const char *json_data, nl_block_t *block){
         outcome = E_SUCCESS;
     }
     else{
-        ESP_LOGI(TAG, "Parsed %d mandatory fields; expected to parse %d",
+        ESP_LOGE(TAG, "Parsed %d mandatory fields; expected to parse %d",
                 n_parse, expected_n_parse);
         outcome = E_FAILURE;
         goto exit;
